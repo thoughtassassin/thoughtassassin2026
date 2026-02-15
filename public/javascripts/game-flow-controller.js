@@ -25,6 +25,7 @@ export function createGameFlowController({
     const safeInterval = Math.max(1, Number(intervalMs) || 1);
     let lastTimestamp = performance.now();
     let carryMs = 0;
+    const MAX_CHARS_PER_FRAME = 3;
 
     return () => {
       const now = performance.now();
@@ -34,7 +35,7 @@ export function createGameFlowController({
       const steps = Math.floor(carryMs / safeInterval);
       if (steps > 0) {
         carryMs -= steps * safeInterval;
-        return 1;
+        return Math.min(MAX_CHARS_PER_FRAME, steps);
       }
 
       return 0;
@@ -83,6 +84,7 @@ export function createGameFlowController({
 
   function clearStoryTypewriter() {
     if (storyTypeTimer !== null) {
+      window.cancelAnimationFrame(storyTypeTimer);
       window.clearInterval(storyTypeTimer);
       storyTypeTimer = null;
     }
@@ -106,6 +108,7 @@ export function createGameFlowController({
 
   function clearRespawnReflectionSequence() {
     if (respawnReflectionTypeTimer !== null) {
+      window.cancelAnimationFrame(respawnReflectionTypeTimer);
       window.clearInterval(respawnReflectionTypeTimer);
       respawnReflectionTypeTimer = null;
     }
@@ -122,6 +125,7 @@ export function createGameFlowController({
 
   function clearWinAffirmationSequence() {
     if (winAffirmationTypeTimer !== null) {
+      window.cancelAnimationFrame(winAffirmationTypeTimer);
       window.clearInterval(winAffirmationTypeTimer);
       winAffirmationTypeTimer = null;
     }
@@ -161,6 +165,7 @@ export function createGameFlowController({
 
   function clearGameOverKoanSequence() {
     if (gameOverKoanTypeTimer !== null) {
+      window.cancelAnimationFrame(gameOverKoanTypeTimer);
       window.clearInterval(gameOverKoanTypeTimer);
       gameOverKoanTypeTimer = null;
     }
@@ -279,7 +284,7 @@ export function createGameFlowController({
 
     clearStoryTypewriter();
     const storyStepper = createTypewriterStepper(getScaledInterval(storyTypeIntervalMs));
-    storyTypeTimer = window.setInterval(() => {
+    const tickStoryTypewriter = () => {
       if (state.gamePhase !== 'story') {
         clearStoryTypewriter();
         return;
@@ -287,6 +292,7 @@ export function createGameFlowController({
 
       const steps = storyStepper();
       if (steps <= 0) {
+        storyTypeTimer = window.requestAnimationFrame(tickStoryTypewriter);
         return;
       }
 
@@ -297,8 +303,12 @@ export function createGameFlowController({
 
       if (storyTypedChars >= storyFullText.length) {
         completeStoryTyping();
+        return;
       }
-    }, getScaledInterval(storyTypeIntervalMs));
+
+      storyTypeTimer = window.requestAnimationFrame(tickStoryTypewriter);
+    };
+    storyTypeTimer = window.requestAnimationFrame(tickStoryTypewriter);
 
     setStatus('Initializing narrative feed...');
   }
@@ -383,7 +393,7 @@ export function createGameFlowController({
       let typedChars = 0;
       setContemplativeTypeCursorActive(true);
       const winAffirmationStepper = createTypewriterStepper(getScaledInterval(profile.respawnReflectionTypeIntervalMs));
-      winAffirmationTypeTimer = window.setInterval(() => {
+      const tickWinAffirmation = () => {
         if (state.gamePhase !== 'win-affirmation') {
           clearWinAffirmationSequence();
           return;
@@ -391,6 +401,7 @@ export function createGameFlowController({
 
         const steps = winAffirmationStepper();
         if (steps <= 0) {
+          winAffirmationTypeTimer = window.requestAnimationFrame(tickWinAffirmation);
           return;
         }
 
@@ -400,6 +411,7 @@ export function createGameFlowController({
 
         if (typedChars >= affirmation.length) {
           setContemplativeTypeCursorActive(false);
+          window.cancelAnimationFrame(winAffirmationTypeTimer);
           window.clearInterval(winAffirmationTypeTimer);
           winAffirmationTypeTimer = null;
 
@@ -445,8 +457,12 @@ export function createGameFlowController({
               }, profile.respawnReflectionFadeDurationMs + 40);
             }, profile.respawnReflectionFadeDurationMs + 40);
           }, profile.gameOverKoanReadHoldMs * 0.5);
+          return;
         }
-      }, getScaledInterval(profile.respawnReflectionTypeIntervalMs));
+
+        winAffirmationTypeTimer = window.requestAnimationFrame(tickWinAffirmation);
+      };
+      winAffirmationTypeTimer = window.requestAnimationFrame(tickWinAffirmation);
 
       return;
     }
@@ -481,7 +497,7 @@ export function createGameFlowController({
     let typedChars = 0;
     setContemplativeTypeCursorActive(true);
     const koanStepper = createTypewriterStepper(getScaledInterval(profile.gameOverKoanTypeIntervalMs));
-    gameOverKoanTypeTimer = window.setInterval(() => {
+    const tickGameOverKoan = () => {
       if (state.gamePhase !== 'lose-koan') {
         clearGameOverKoanSequence();
         return;
@@ -489,6 +505,7 @@ export function createGameFlowController({
 
       const steps = koanStepper();
       if (steps <= 0) {
+        gameOverKoanTypeTimer = window.requestAnimationFrame(tickGameOverKoan);
         return;
       }
 
@@ -498,6 +515,7 @@ export function createGameFlowController({
 
       if (typedChars >= koan.length) {
         setContemplativeTypeCursorActive(false);
+        window.cancelAnimationFrame(gameOverKoanTypeTimer);
         window.clearInterval(gameOverKoanTypeTimer);
         gameOverKoanTypeTimer = null;
 
@@ -552,8 +570,12 @@ export function createGameFlowController({
             clearGameOverKoanSequence();
           }
         }, profile.gameOverKoanReadHoldMs);
+        return;
       }
-    }, getScaledInterval(profile.gameOverKoanTypeIntervalMs));
+
+      gameOverKoanTypeTimer = window.requestAnimationFrame(tickGameOverKoan);
+    };
+    gameOverKoanTypeTimer = window.requestAnimationFrame(tickGameOverKoan);
   }
 
   function getRespawnReflection() {
@@ -623,7 +645,7 @@ export function createGameFlowController({
     let typedChars = 0;
     setContemplativeTypeCursorActive(true);
     const reflectionStepper = createTypewriterStepper(getScaledInterval(profile.respawnReflectionTypeIntervalMs));
-    respawnReflectionTypeTimer = window.setInterval(() => {
+    const tickRespawnReflection = () => {
       if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
         clearRespawnReflectionSequence();
         return;
@@ -631,6 +653,7 @@ export function createGameFlowController({
 
       const steps = reflectionStepper();
       if (steps <= 0) {
+        respawnReflectionTypeTimer = window.requestAnimationFrame(tickRespawnReflection);
         return;
       }
 
@@ -640,6 +663,7 @@ export function createGameFlowController({
 
       if (typedChars >= reflection.length) {
         setContemplativeTypeCursorActive(false);
+        window.cancelAnimationFrame(respawnReflectionTypeTimer);
         window.clearInterval(respawnReflectionTypeTimer);
         respawnReflectionTypeTimer = null;
 
@@ -698,8 +722,12 @@ export function createGameFlowController({
             }, 1000);
           }, profile.respawnReflectionFadeDurationMs + 60);
         }, profile.respawnReflectionReadHoldMs);
+        return;
       }
-    }, getScaledInterval(profile.respawnReflectionTypeIntervalMs));
+
+      respawnReflectionTypeTimer = window.requestAnimationFrame(tickRespawnReflection);
+    };
+    respawnReflectionTypeTimer = window.requestAnimationFrame(tickRespawnReflection);
   }
 
   function setStoryTypeIntervalMs(value) {
