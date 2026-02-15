@@ -16,16 +16,15 @@ export function createGameFlowController({
   const getScaledInterval = (intervalMs) => {
     const baseInterval = Number(intervalMs);
     if (!Number.isFinite(baseInterval) || baseInterval <= 0) {
-      return 4;
+      return 2;
     }
-    return Math.max(4, Math.round(baseInterval * typewriterSpeedMultiplier));
+    return Math.max(2, Math.round(baseInterval * typewriterSpeedMultiplier));
   };
 
   const createTypewriterStepper = (intervalMs) => {
     const safeInterval = Math.max(1, Number(intervalMs) || 1);
     let lastTimestamp = performance.now();
     let carryMs = 0;
-    const MAX_CHARS_PER_FRAME = 3;
 
     return () => {
       const now = performance.now();
@@ -35,7 +34,8 @@ export function createGameFlowController({
       const steps = Math.floor(carryMs / safeInterval);
       if (steps > 0) {
         carryMs -= steps * safeInterval;
-        return Math.min(MAX_CHARS_PER_FRAME, steps);
+        const maxCharsPerFrame = typewriterSpeedMultiplier <= 0.05 ? 8 : 3;
+        return Math.min(maxCharsPerFrame, steps);
       }
 
       return 0;
@@ -735,7 +735,7 @@ export function createGameFlowController({
     if (!Number.isFinite(parsed) || parsed <= 0) {
       return;
     }
-    storyTypeIntervalMs = Math.max(4, Math.round(parsed));
+    storyTypeIntervalMs = Math.max(2, Math.round(parsed));
   }
 
   function setTypewriterSpeedMultiplier(value) {
