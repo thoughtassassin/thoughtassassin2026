@@ -96,7 +96,8 @@ import { state } from './game-state.js';
 let gpu = null;
 let canvasFallbackRenderer = null;
 let fallbackModeBadgeEl = null;
-const FALLBACK_STORY_TYPE_INTERVAL_MS = Math.max(8, Math.round(STORY_TYPE_INTERVAL_MS * 0.55));
+const FALLBACK_STORY_TYPE_INTERVAL_MS = STORY_TYPE_INTERVAL_MS;
+const FALLBACK_TYPEWRITER_SPEED_MULTIPLIER = 0.45;
 const contemplativeQuotePools = {
   respawn: [],
   gameOver: [],
@@ -332,6 +333,10 @@ function clearStoryTypewriter() {
 
 function setStoryTypeIntervalMs(value) {
   flowController.setStoryTypeIntervalMs(value);
+}
+
+function setTypewriterSpeedMultiplier(value) {
+  flowController.setTypewriterSpeedMultiplier(value);
 }
 
 function clearTitleCountdown() {
@@ -1585,6 +1590,7 @@ async function start() {
     canvasFallbackRenderer = null;
     setFallbackModeBadgeVisible(false);
     setStoryTypeIntervalMs(STORY_TYPE_INTERVAL_MS);
+    setTypewriterSpeedMultiplier(1);
     showStoryIntro();
     requestAnimationFrame(render);
   } catch (error) {
@@ -1593,12 +1599,14 @@ async function start() {
       gpu = null;
       setFallbackModeBadgeVisible(true);
       setStoryTypeIntervalMs(FALLBACK_STORY_TYPE_INTERVAL_MS);
+      setTypewriterSpeedMultiplier(FALLBACK_TYPEWRITER_SPEED_MULTIPLIER);
       setStatus('WebGPU unavailable. Running Canvas compatibility mode.');
       showStoryIntro();
       requestAnimationFrame(render);
     } catch {
       setFallbackModeBadgeVisible(false);
       setStoryTypeIntervalMs(STORY_TYPE_INTERVAL_MS);
+      setTypewriterSpeedMultiplier(1);
       showGraphicsUnsupportedState(error);
     }
   }

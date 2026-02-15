@@ -1,3 +1,13 @@
+# Thought Assassin — Release v0.3.8
+
+## Highlights
+- Added a global typewriter speed multiplier in flow control so all narrative typing sequences can be tuned consistently.
+- Applied faster typing cadence in Canvas compatibility mode across intro, koan, respawn reflection, and win affirmation overlays.
+- Kept WebGPU/default pacing unchanged while fallback mode now uses a dedicated accelerated multiplier.
+
+## Stability
+- Version metadata updated to `0.3.8` and release tagged as `v0.3.8`.
+
 # Thought Assassin — Release v0.3.7
 
 ## Highlights

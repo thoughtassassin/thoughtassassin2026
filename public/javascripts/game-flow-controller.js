@@ -11,6 +11,15 @@ export function createGameFlowController({
   callbacks
 }) {
   let storyTypeIntervalMs = STORY_TYPE_INTERVAL_MS;
+  let typewriterSpeedMultiplier = 1;
+
+  const getScaledInterval = (intervalMs) => {
+    const baseInterval = Number(intervalMs);
+    if (!Number.isFinite(baseInterval) || baseInterval <= 0) {
+      return 8;
+    }
+    return Math.max(8, Math.round(baseInterval * typewriterSpeedMultiplier));
+  };
 
   const {
     gameOverlayEl,
@@ -263,7 +272,7 @@ export function createGameFlowController({
       if (storyTypedChars >= storyFullText.length) {
         completeStoryTyping();
       }
-    }, storyTypeIntervalMs);
+    }, getScaledInterval(storyTypeIntervalMs));
 
     setStatus('Initializing narrative feed...');
   }
@@ -405,7 +414,7 @@ export function createGameFlowController({
             }, profile.respawnReflectionFadeDurationMs + 40);
           }, profile.gameOverKoanReadHoldMs * 0.5);
         }
-      }, profile.respawnReflectionTypeIntervalMs);
+      }, getScaledInterval(profile.respawnReflectionTypeIntervalMs));
 
       return;
     }
@@ -506,7 +515,7 @@ export function createGameFlowController({
           }
         }, profile.gameOverKoanReadHoldMs);
       }
-    }, profile.gameOverKoanTypeIntervalMs);
+    }, getScaledInterval(profile.gameOverKoanTypeIntervalMs));
   }
 
   function getRespawnReflection() {
@@ -646,7 +655,7 @@ export function createGameFlowController({
           }, profile.respawnReflectionFadeDurationMs + 60);
         }, profile.respawnReflectionReadHoldMs);
       }
-    }, profile.respawnReflectionTypeIntervalMs);
+    }, getScaledInterval(profile.respawnReflectionTypeIntervalMs));
   }
 
   function setStoryTypeIntervalMs(value) {
@@ -655,6 +664,14 @@ export function createGameFlowController({
       return;
     }
     storyTypeIntervalMs = Math.max(4, Math.round(parsed));
+  }
+
+  function setTypewriterSpeedMultiplier(value) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return;
+    }
+    typewriterSpeedMultiplier = Math.min(2.5, Math.max(0.2, parsed));
   }
 
   return {
@@ -669,6 +686,7 @@ export function createGameFlowController({
     showTitleScreen,
     finishGame,
     beginRespawnCountdown,
-    setStoryTypeIntervalMs
+    setStoryTypeIntervalMs,
+    setTypewriterSpeedMultiplier
   };
 }
