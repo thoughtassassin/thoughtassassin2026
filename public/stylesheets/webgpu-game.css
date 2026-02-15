@@ -188,6 +188,15 @@ body {
   border-top: 1px solid rgba(111, 255, 157, 0.25);
 }
 
+@media (max-width: 900px), (max-height: 720px) {
+  .game-overlay.terminal-overlay {
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    padding: 16px;
+  }
+}
+
 .game-overlay.terminal-overlay h2 {
   color: #7dff9e;
   font-size: 1rem;

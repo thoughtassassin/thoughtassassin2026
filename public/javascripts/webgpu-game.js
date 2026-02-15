@@ -419,6 +419,7 @@ function showStoryIntro() {
   showOverlay('boot@thought-assassin:~$', '', 'Continue');
   if (gameOverlayEl) {
     gameOverlayEl.classList.add('terminal-overlay');
+    gameOverlayEl.scrollTop = 0;
   }
   if (overlayButtonEl) {
     overlayButtonEl.style.display = 'none';
