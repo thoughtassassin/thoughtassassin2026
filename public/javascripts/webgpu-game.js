@@ -98,7 +98,7 @@ let canvasFallbackRenderer = null;
 let fallbackModeBadgeEl = null;
 let fallbackLastRenderTimestamp = 0;
 const FALLBACK_STORY_TYPE_INTERVAL_MS = STORY_TYPE_INTERVAL_MS;
-const FALLBACK_TYPEWRITER_SPEED_MULTIPLIER = 0.45;
+const FALLBACK_TYPEWRITER_SPEED_MULTIPLIER = 0.25;
 const FALLBACK_IDLE_RENDER_INTERVAL_MS = 240;
 const contemplativeQuotePools = {
   respawn: [],
