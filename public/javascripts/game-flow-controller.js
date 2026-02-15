@@ -16,9 +16,29 @@ export function createGameFlowController({
   const getScaledInterval = (intervalMs) => {
     const baseInterval = Number(intervalMs);
     if (!Number.isFinite(baseInterval) || baseInterval <= 0) {
-      return 8;
+      return 4;
     }
-    return Math.max(8, Math.round(baseInterval * typewriterSpeedMultiplier));
+    return Math.max(4, Math.round(baseInterval * typewriterSpeedMultiplier));
+  };
+
+  const createTypewriterStepper = (intervalMs) => {
+    const safeInterval = Math.max(1, Number(intervalMs) || 1);
+    let lastTimestamp = performance.now();
+    let carryMs = 0;
+
+    return () => {
+      const now = performance.now();
+      carryMs += Math.max(0, now - lastTimestamp);
+      lastTimestamp = now;
+
+      const steps = Math.floor(carryMs / safeInterval);
+      if (steps > 0) {
+        carryMs -= steps * safeInterval;
+        return steps;
+      }
+
+      return 0;
+    };
   };
 
   const {
@@ -258,13 +278,19 @@ export function createGameFlowController({
     }
 
     clearStoryTypewriter();
+    const storyStepper = createTypewriterStepper(getScaledInterval(storyTypeIntervalMs));
     storyTypeTimer = window.setInterval(() => {
       if (state.gamePhase !== 'story') {
         clearStoryTypewriter();
         return;
       }
 
-      storyTypedChars = Math.min(storyTypedChars + 1, storyFullText.length);
+      const steps = storyStepper();
+      if (steps <= 0) {
+        return;
+      }
+
+      storyTypedChars = Math.min(storyTypedChars + steps, storyFullText.length);
       if (overlayMessageEl) {
         overlayMessageEl.textContent = storyFullText.slice(0, storyTypedChars);
       }
@@ -356,13 +382,19 @@ export function createGameFlowController({
 
       let typedChars = 0;
       setContemplativeTypeCursorActive(true);
+      const winAffirmationStepper = createTypewriterStepper(getScaledInterval(profile.respawnReflectionTypeIntervalMs));
       winAffirmationTypeTimer = window.setInterval(() => {
         if (state.gamePhase !== 'win-affirmation') {
           clearWinAffirmationSequence();
           return;
         }
 
-        typedChars = Math.min(typedChars + 1, affirmation.length);
+        const steps = winAffirmationStepper();
+        if (steps <= 0) {
+          return;
+        }
+
+        typedChars = Math.min(typedChars + steps, affirmation.length);
         overlayMessageEl.textContent = `${winChapterTag}\n${affirmation.slice(0, typedChars)}`;
         pulseExistentialVignette();
 
@@ -448,13 +480,19 @@ export function createGameFlowController({
 
     let typedChars = 0;
     setContemplativeTypeCursorActive(true);
+    const koanStepper = createTypewriterStepper(getScaledInterval(profile.gameOverKoanTypeIntervalMs));
     gameOverKoanTypeTimer = window.setInterval(() => {
       if (state.gamePhase !== 'lose-koan') {
         clearGameOverKoanSequence();
         return;
       }
 
-      typedChars = Math.min(typedChars + 1, koan.length);
+      const steps = koanStepper();
+      if (steps <= 0) {
+        return;
+      }
+
+      typedChars = Math.min(typedChars + steps, koan.length);
       overlayMessageEl.textContent = `${chapterTag}\n${koan.slice(0, typedChars)}`;
       pulseExistentialVignette();
 
@@ -584,13 +622,19 @@ export function createGameFlowController({
 
     let typedChars = 0;
     setContemplativeTypeCursorActive(true);
+    const reflectionStepper = createTypewriterStepper(getScaledInterval(profile.respawnReflectionTypeIntervalMs));
     respawnReflectionTypeTimer = window.setInterval(() => {
       if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
         clearRespawnReflectionSequence();
         return;
       }
 
-      typedChars = Math.min(typedChars + 1, reflection.length);
+      const steps = reflectionStepper();
+      if (steps <= 0) {
+        return;
+      }
+
+      typedChars = Math.min(typedChars + steps, reflection.length);
       overlayMessageEl.textContent = reflection.slice(0, typedChars);
       pulseExistentialVignette();
 
