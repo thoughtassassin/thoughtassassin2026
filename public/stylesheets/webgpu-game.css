@@ -10,6 +10,11 @@
   transform: scale(1);
   transform-origin: center center;
   text-align: center;
+  gap: 6px;
+}
+
+.game-overlay-content p + button {
+  margin-top: 8px;
 }
 
 .game-overlay.terminal-overlay .game-overlay-content {
