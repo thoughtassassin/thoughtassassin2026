@@ -252,17 +252,21 @@ export async function createCanvasFallbackRenderer({ canvas }) {
       try {
         const animationSample = getRabbitAnimationSample(rabbitImage.width);
         const frameRect = animationSample.frameRect;
+        const sourceX = frameRect.frameX;
+        const sourceY = frameRect.frameY;
+        const sourceWidth = frameRect.frameWidth;
+        const sourceHeight = frameRect.frameHeight;
         const sourceIsValid =
-          Number.isFinite(frameRect.x) &&
-          Number.isFinite(frameRect.y) &&
-          Number.isFinite(frameRect.width) &&
-          Number.isFinite(frameRect.height) &&
-          frameRect.width > 0 &&
-          frameRect.height > 0 &&
-          frameRect.x >= 0 &&
-          frameRect.y >= 0 &&
-          (frameRect.x + frameRect.width) <= rabbitImage.width &&
-          (frameRect.y + frameRect.height) <= rabbitImage.height;
+          Number.isFinite(sourceX) &&
+          Number.isFinite(sourceY) &&
+          Number.isFinite(sourceWidth) &&
+          Number.isFinite(sourceHeight) &&
+          sourceWidth > 0 &&
+          sourceHeight > 0 &&
+          sourceX >= 0 &&
+          sourceY >= 0 &&
+          (sourceX + sourceWidth) <= rabbitImage.width &&
+          (sourceY + sourceHeight) <= rabbitImage.height;
 
         if (sourceIsValid) {
           const drawX = player.x + offsetX;
@@ -277,10 +281,10 @@ export async function createCanvasFallbackRenderer({ canvas }) {
 
           context.drawImage(
             rabbitImage,
-            frameRect.x,
-            frameRect.y,
-            frameRect.width,
-            frameRect.height,
+            sourceX,
+            sourceY,
+            sourceWidth,
+            sourceHeight,
             -player.drawWidth / 2,
             -player.drawHeight / 2,
             player.drawWidth,

@@ -1,3 +1,13 @@
+# Thought Assassin — Release v0.3.5
+
+## Highlights
+- Fixed Canvas fallback rabbit rendering to use the exact same sprite-sheet frame selection fields as WebGPU (`frameX`, `frameY`, `frameWidth`, `frameHeight`).
+- Preserved a safe fallback rabbit silhouette only when sprite assets are unavailable or invalid.
+- Added a lightweight on-screen `Renderer: Canvas Compatibility` badge for QA/debug visibility when fallback mode is active.
+
+## Stability
+- Version metadata updated to `0.3.5` and release tagged as `v0.3.5`.
+
 # Thought Assassin — Release v0.3.4
 
 ## Highlights

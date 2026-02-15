@@ -95,6 +95,7 @@ import { state } from './game-state.js';
 
 let gpu = null;
 let canvasFallbackRenderer = null;
+let fallbackModeBadgeEl = null;
 const contemplativeQuotePools = {
   respawn: [],
   gameOver: [],
@@ -1534,6 +1535,27 @@ function showGraphicsUnsupportedState(error) {
   setStatus('WebGPU unavailable in this browser.');
 }
 
+function setFallbackModeBadgeVisible(isVisible) {
+  if (!stageWrapEl) {
+    return;
+  }
+
+  if (!fallbackModeBadgeEl) {
+    fallbackModeBadgeEl = document.createElement('div');
+    fallbackModeBadgeEl.className = 'setting-btn';
+    fallbackModeBadgeEl.textContent = 'Renderer: Canvas Compatibility';
+    fallbackModeBadgeEl.style.position = 'absolute';
+    fallbackModeBadgeEl.style.top = '10px';
+    fallbackModeBadgeEl.style.right = '10px';
+    fallbackModeBadgeEl.style.zIndex = '6';
+    fallbackModeBadgeEl.style.pointerEvents = 'none';
+    fallbackModeBadgeEl.style.opacity = '0.92';
+    stageWrapEl.appendChild(fallbackModeBadgeEl);
+  }
+
+  fallbackModeBadgeEl.style.display = isVisible ? 'inline-flex' : 'none';
+}
+
 async function start() {
   setupInput();
   loadHighScore();
@@ -1556,16 +1578,19 @@ async function start() {
   try {
     gpu = await initWebGPU();
     canvasFallbackRenderer = null;
+    setFallbackModeBadgeVisible(false);
     showStoryIntro();
     requestAnimationFrame(render);
   } catch (error) {
     try {
       canvasFallbackRenderer = await createCanvasFallbackRenderer({ canvas });
       gpu = null;
+      setFallbackModeBadgeVisible(true);
       setStatus('WebGPU unavailable. Running Canvas compatibility mode.');
       showStoryIntro();
       requestAnimationFrame(render);
     } catch {
+      setFallbackModeBadgeVisible(false);
       showGraphicsUnsupportedState(error);
     }
   }
