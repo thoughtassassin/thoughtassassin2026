@@ -1,3 +1,13 @@
+# Thought Assassin — Release v0.3.3
+
+## Highlights
+- Added a Canvas2D compatibility renderer path so gameplay runs when WebGPU is unavailable (including PlayStation browser scenarios).
+- Updated startup flow to try WebGPU first, then automatically switch to Canvas mode on initialization failure.
+- Reused existing simulation/input/gameplay systems in compatibility mode so controls, scoring, and enemy logic remain consistent.
+
+## Stability
+- Version metadata updated to `0.3.3` and release tagged as `v0.3.3`.
+
 # Thought Assassin — Release v0.3.2
 
 ## Highlights

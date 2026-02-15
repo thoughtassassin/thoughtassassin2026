@@ -6,6 +6,7 @@ import { createAudioSystem } from './audio-system.js';
 import { bounceCircle, intersects } from './game-loop-utils.js';
 import { createGameFlowController } from './game-flow-controller.js';
 import { createGameEffectsController } from './game-effects-controller.js';
+import { createCanvasFallbackRenderer } from './canvas-fallback-renderer.js';
 import {
   drawCarrot as renderDrawCarrot,
   drawPixelPasture as renderDrawPixelPasture,
@@ -93,6 +94,7 @@ import {
 import { state } from './game-state.js';
 
 let gpu = null;
+let canvasFallbackRenderer = null;
 const contemplativeQuotePools = {
   respawn: [],
   gameOver: [],
@@ -1333,7 +1335,7 @@ function getRabbitAnimationSample(textureWidth) {
 
 
 function render(timestamp) {
-  if (!gpu) {
+  if (!gpu && !canvasFallbackRenderer) {
     return;
   }
 
@@ -1351,6 +1353,20 @@ function render(timestamp) {
   const shakeMagnitude = state.screenShakeStrength * clamp(shakeDecay, 0, 1);
   const shakeX = shakeMagnitude > 0 ? randomRange(-shakeMagnitude, shakeMagnitude) : 0;
   const shakeY = shakeMagnitude > 0 ? randomRange(-shakeMagnitude, shakeMagnitude) : 0;
+
+  if (canvasFallbackRenderer) {
+    canvasFallbackRenderer.drawFrame({
+      state,
+      timeSeconds: timestamp * 0.001,
+      shakeX,
+      shakeY,
+      getShotLength,
+      getRabbitAnimationSample
+    });
+
+    requestAnimationFrame(render);
+    return;
+  }
 
   let offset = 0;
 
@@ -1539,10 +1555,19 @@ async function start() {
 
   try {
     gpu = await initWebGPU();
+    canvasFallbackRenderer = null;
     showStoryIntro();
     requestAnimationFrame(render);
   } catch (error) {
-    showGraphicsUnsupportedState(error);
+    try {
+      canvasFallbackRenderer = await createCanvasFallbackRenderer({ canvas });
+      gpu = null;
+      setStatus('WebGPU unavailable. Running Canvas compatibility mode.');
+      showStoryIntro();
+      requestAnimationFrame(render);
+    } catch {
+      showGraphicsUnsupportedState(error);
+    }
   }
 }
 
