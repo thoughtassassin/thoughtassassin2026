@@ -1,3 +1,13 @@
+# Thought Assassin — Release v0.3.2
+
+## Highlights
+- Fixed directional keyboard input conflicts so pressing one direction clears its opposite, preventing stuck downward movement states.
+- Added graceful unsupported-browser handling for non-WebGPU environments with a clear overlay message and status update.
+- Improved startup error path so WebGPU initialization failures now present player-facing guidance instead of a silent/console-only failure mode.
+
+## Stability
+- Version metadata updated to `0.3.2` and tag `v0.3.2` published.
+
 # Thought Assassin — Release v0.3.0
 
 ## Highlights
