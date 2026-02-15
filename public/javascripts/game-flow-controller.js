@@ -34,8 +34,7 @@ export function createGameFlowController({
       const steps = Math.floor(carryMs / safeInterval);
       if (steps > 0) {
         carryMs -= steps * safeInterval;
-        const maxCharsPerFrame = typewriterSpeedMultiplier <= 0.05 ? 8 : 3;
-        return Math.min(maxCharsPerFrame, steps);
+        return 1;
       }
 
       return 0;
