@@ -715,7 +715,7 @@ export function createGameFlowController({
     if (!Number.isFinite(parsed) || parsed <= 0) {
       return;
     }
-    typewriterSpeedMultiplier = Math.min(2.5, Math.max(0.05, parsed));
+    typewriterSpeedMultiplier = Math.min(2.5, Math.max(0.02, parsed));
   }
 
   return {
