@@ -1,3 +1,13 @@
+# Thought Assassin — Release v0.3.6
+
+## Highlights
+- Updated Canvas compatibility mode to render background, wolves, and carrots using the same shared geometry/color paths as the WebGPU renderer.
+- Improved visual parity by rasterizing shared triangle data on Canvas2D, reducing style drift between fallback and native WebGPU paths.
+- Kept existing rabbit sprite-sheet parity and fallback mode behavior intact.
+
+## Stability
+- Version metadata updated to `0.3.6` and release tagged as `v0.3.6`.
+
 # Thought Assassin — Release v0.3.5
 
 ## Highlights

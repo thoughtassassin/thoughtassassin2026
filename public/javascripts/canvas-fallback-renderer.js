@@ -1,5 +1,10 @@
 import { clamp } from './math-utils.js';
 import {
+  drawCarrot as renderDrawCarrot,
+  drawPixelPasture as renderDrawPixelPasture,
+  drawWolfHead as renderDrawWolfHead
+} from './game-renderer.js';
+import {
   FIRE_THICKNESS,
   GAME_HEIGHT,
   GAME_WIDTH,
@@ -15,6 +20,8 @@ export async function createCanvasFallbackRenderer({ canvas }) {
 
   context.imageSmoothingEnabled = false;
 
+  const geometryVertexData = new Float32Array(6 * 24576);
+
   let rabbitImage = null;
   try {
     rabbitImage = await loadImage('images/rabbit_frames.png');
@@ -23,207 +30,59 @@ export async function createCanvasFallbackRenderer({ canvas }) {
   }
 
   const drawBackground = (timeSeconds, offsetX, offsetY) => {
-    const horizonY = GAME_HEIGHT * 0.63;
-
-    const skyGradient = context.createLinearGradient(0, offsetY, 0, horizonY + offsetY);
-    skyGradient.addColorStop(0, '#4f4a7a');
-    skyGradient.addColorStop(0.56, '#8b5a64');
-    skyGradient.addColorStop(1, '#dd9b5a');
-    context.fillStyle = skyGradient;
-    context.fillRect(offsetX, offsetY, GAME_WIDTH, horizonY);
-
-    const groundGradient = context.createLinearGradient(0, horizonY + offsetY, 0, GAME_HEIGHT + offsetY);
-    groundGradient.addColorStop(0, '#72683d');
-    groundGradient.addColorStop(1, '#473f26');
-    context.fillStyle = groundGradient;
-    context.fillRect(offsetX, horizonY + offsetY, GAME_WIDTH, GAME_HEIGHT - horizonY);
-
-    const sunX = 640 + offsetX;
-    const sunY = 76 + offsetY;
-    const sunPulse = 1 + Math.sin(timeSeconds * 1.3) * 0.04;
-    context.fillStyle = '#ffe39a';
-    context.beginPath();
-    context.arc(sunX, sunY, 42 * sunPulse, 0, Math.PI * 2);
-    context.fill();
-
-    context.fillStyle = '#ffd17d';
-    context.beginPath();
-    context.arc(sunX, sunY, 24, 0, Math.PI * 2);
-    context.fill();
-
-    context.fillStyle = '#57496f';
-    context.beginPath();
-    context.moveTo(offsetX, horizonY + 10 + offsetY);
-    context.lineTo(180 + offsetX, 196 + offsetY);
-    context.lineTo(350 + offsetX, horizonY + 10 + offsetY);
-    context.closePath();
-    context.fill();
-
-    context.beginPath();
-    context.moveTo(250 + offsetX, horizonY + 14 + offsetY);
-    context.lineTo(470 + offsetX, 182 + offsetY);
-    context.lineTo(690 + offsetX, horizonY + 14 + offsetY);
-    context.closePath();
-    context.fill();
-
-    context.fillStyle = '#68557d';
-    context.beginPath();
-    context.moveTo(520 + offsetX, horizonY + 8 + offsetY);
-    context.lineTo(760 + offsetX, 198 + offsetY);
-    context.lineTo(980 + offsetX, horizonY + 8 + offsetY);
-    context.closePath();
-    context.fill();
-
-    context.fillStyle = 'rgba(255, 199, 119, 0.22)';
-    context.fillRect(offsetX, horizonY - 18 + offsetY, GAME_WIDTH, 22);
-
-    const cloudDrift = Math.sin(timeSeconds * 0.18) * 22;
-    drawCloudBank(180 + cloudDrift + offsetX, 88 + offsetY, 92, 26);
-    drawCloudBank(420 - cloudDrift * 0.6 + offsetX, 64 + offsetY, 118, 30);
-    drawCloudBank(760 + cloudDrift * 0.8 + offsetX, 98 + offsetY, 104, 26);
-
-    drawGroundTexture(horizonY + offsetY, offsetX, offsetY, timeSeconds);
+    drawRendererGeometry((vertexData, offset) => renderDrawPixelPasture(vertexData, offset, offsetX, offsetY, timeSeconds));
   };
 
-  const drawCloudBank = (x, y, width, height) => {
-    context.fillStyle = 'rgba(214, 171, 153, 0.55)';
-    context.beginPath();
-    context.ellipse(x - width * 0.2, y + 2, width * 0.26, height * 0.42, 0, 0, Math.PI * 2);
-    context.ellipse(x, y, width * 0.32, height * 0.5, 0, 0, Math.PI * 2);
-    context.ellipse(x + width * 0.24, y + 4, width * 0.28, height * 0.4, 0, 0, Math.PI * 2);
-    context.fill();
-
-    context.fillStyle = 'rgba(245, 206, 172, 0.34)';
-    context.beginPath();
-    context.ellipse(x, y - 4, width * 0.24, height * 0.26, 0, 0, Math.PI * 2);
-    context.fill();
+  const drawCarrot = (x, y, size, offsetX, offsetY) => {
+    drawRendererGeometry((vertexData, offset) => renderDrawCarrot(vertexData, offset, x, y, size, offsetX, offsetY));
   };
 
-  const drawGroundTexture = (horizonY, offsetX, offsetY, timeSeconds) => {
-    context.strokeStyle = 'rgba(111, 142, 70, 0.24)';
-    context.lineWidth = 1;
-    for (let i = 0; i < 22; i += 1) {
-      const y = horizonY + 8 + i * 9;
-      const wobble = Math.sin(timeSeconds * 0.4 + i * 0.38) * 6;
-      context.beginPath();
-      context.moveTo(offsetX + wobble, y);
-      context.quadraticCurveTo(offsetX + GAME_WIDTH * 0.45, y + 4, offsetX + GAME_WIDTH + wobble * 0.6, y - 2);
-      context.stroke();
-    }
+  const drawHazard = (hazard, offsetX, offsetY) => {
+    const knockoutEyesTimer = hazard.knockoutEyesTimer || 0;
+    drawRendererGeometry((vertexData, offset) => renderDrawWolfHead(
+      vertexData,
+      offset,
+      hazard.x,
+      hazard.y,
+      hazard.size,
+      offsetX,
+      offsetY,
+      hazard.isFalling,
+      hazard.fallSpin || 0,
+      knockoutEyesTimer > 0,
+      1 - clamp(knockoutEyesTimer / HAZARD_KNOCKOUT_X_EYES_DURATION, 0, 1)
+    ));
+  };
 
-    context.fillStyle = 'rgba(82, 112, 50, 0.5)';
-    for (let x = 18; x < GAME_WIDTH; x += 28) {
-      const bladeHeight = 10 + ((x / 7) % 9);
+  const drawRendererGeometry = (drawCallback) => {
+    let offset = 0;
+    offset = drawCallback(geometryVertexData, offset);
+
+    for (let index = 0; index < offset; index += 18) {
+      const x1 = clipToCanvasX(geometryVertexData[index]);
+      const y1 = clipToCanvasY(geometryVertexData[index + 1]);
+      const x2 = clipToCanvasX(geometryVertexData[index + 6]);
+      const y2 = clipToCanvasY(geometryVertexData[index + 7]);
+      const x3 = clipToCanvasX(geometryVertexData[index + 12]);
+      const y3 = clipToCanvasY(geometryVertexData[index + 13]);
+
+      const r = geometryVertexData[index + 2];
+      const g = geometryVertexData[index + 3];
+      const b = geometryVertexData[index + 4];
+      const a = geometryVertexData[index + 5];
+
+      context.fillStyle = `rgba(${Math.round(clamp(r, 0, 1) * 255)}, ${Math.round(clamp(g, 0, 1) * 255)}, ${Math.round(clamp(b, 0, 1) * 255)}, ${clamp(a, 0, 1)})`;
       context.beginPath();
-      context.moveTo(x + offsetX, GAME_HEIGHT + offsetY - 2);
-      context.lineTo(x - 3 + offsetX, GAME_HEIGHT + offsetY - bladeHeight);
-      context.lineTo(x + 2 + offsetX, GAME_HEIGHT + offsetY - bladeHeight * 0.55);
+      context.moveTo(x1, y1);
+      context.lineTo(x2, y2);
+      context.lineTo(x3, y3);
       context.closePath();
       context.fill();
     }
   };
 
-  const drawCarrot = (x, y, size, offsetX, offsetY) => {
-    const centerX = x + offsetX;
-    const centerY = y + offsetY;
-
-    const bodyGradient = context.createLinearGradient(centerX, centerY - size, centerX, centerY + size * 1.2);
-    bodyGradient.addColorStop(0, '#ffb247');
-    bodyGradient.addColorStop(0.58, '#f88d28');
-    bodyGradient.addColorStop(1, '#d86716');
-    context.fillStyle = bodyGradient;
-    context.beginPath();
-    context.moveTo(centerX, centerY + size * 1.1);
-    context.lineTo(centerX - size * 0.52, centerY - size * 0.56);
-    context.lineTo(centerX + size * 0.52, centerY - size * 0.56);
-    context.closePath();
-    context.fill();
-
-    context.strokeStyle = 'rgba(255, 208, 132, 0.7)';
-    context.lineWidth = 1.5;
-    context.beginPath();
-    context.moveTo(centerX - size * 0.05, centerY - size * 0.44);
-    context.lineTo(centerX - size * 0.12, centerY + size * 0.72);
-    context.stroke();
-
-    context.fillStyle = '#90c94c';
-    context.fillRect(centerX - 2, centerY - size * 0.95, 4, size * 0.4);
-    context.fillRect(centerX - size * 0.38, centerY - size * 1.04, size * 0.2, size * 0.38);
-    context.fillRect(centerX + size * 0.18, centerY - size * 1.04, size * 0.2, size * 0.38);
-  };
-
-  const drawHazard = (hazard, offsetX, offsetY) => {
-    const x = hazard.x + offsetX;
-    const y = hazard.y + offsetY;
-
-    context.save();
-    context.translate(x, y);
-    context.rotate(hazard.isFalling ? (hazard.fallSpin || 0) : 0);
-
-    const shellGradient = context.createRadialGradient(
-      -hazard.size * 0.2,
-      -hazard.size * 0.3,
-      hazard.size * 0.2,
-      0,
-      0,
-      hazard.size * 1.1
-    );
-    shellGradient.addColorStop(0, '#7b7589');
-    shellGradient.addColorStop(0.58, '#585464');
-    shellGradient.addColorStop(1, '#363543');
-    context.fillStyle = shellGradient;
-    context.beginPath();
-    context.arc(0, 0, hazard.size, 0, Math.PI * 2);
-    context.fill();
-
-    context.fillStyle = '#6a6678';
-    context.beginPath();
-    context.arc(-hazard.size * 0.24, -hazard.size * 0.2, hazard.size * 0.42, 0, Math.PI * 2);
-    context.fill();
-
-    const showKnockoutEyes = (hazard.knockoutEyesTimer || 0) > 0;
-    if (showKnockoutEyes) {
-      context.strokeStyle = '#f5ecde';
-      context.lineWidth = 2;
-      context.beginPath();
-      context.moveTo(-hazard.size * 0.44, -hazard.size * 0.24);
-      context.lineTo(-hazard.size * 0.2, hazard.size * 0.02);
-      context.moveTo(-hazard.size * 0.44, hazard.size * 0.02);
-      context.lineTo(-hazard.size * 0.2, -hazard.size * 0.24);
-      context.moveTo(hazard.size * 0.2, -hazard.size * 0.24);
-      context.lineTo(hazard.size * 0.44, hazard.size * 0.02);
-      context.moveTo(hazard.size * 0.2, hazard.size * 0.02);
-      context.lineTo(hazard.size * 0.44, -hazard.size * 0.24);
-      context.stroke();
-
-      const knockoutProgress = 1 - clamp((hazard.knockoutEyesTimer || 0) / HAZARD_KNOCKOUT_X_EYES_DURATION, 0, 1);
-      context.strokeStyle = '#ffb05c';
-      context.lineWidth = 2;
-      context.beginPath();
-      context.arc(0, hazard.size * 0.25, hazard.size * 0.2 + knockoutProgress * 2, 0.2 * Math.PI, 0.8 * Math.PI);
-      context.stroke();
-    } else {
-      context.fillStyle = '#f7f0df';
-      context.beginPath();
-      context.arc(-hazard.size * 0.28, -hazard.size * 0.1, hazard.size * 0.14, 0, Math.PI * 2);
-      context.arc(hazard.size * 0.28, -hazard.size * 0.1, hazard.size * 0.14, 0, Math.PI * 2);
-      context.fill();
-
-      context.fillStyle = '#131218';
-      context.beginPath();
-      context.arc(-hazard.size * 0.27, -hazard.size * 0.08, hazard.size * 0.07, 0, Math.PI * 2);
-      context.arc(hazard.size * 0.27, -hazard.size * 0.08, hazard.size * 0.07, 0, Math.PI * 2);
-      context.fill();
-
-      context.strokeStyle = '#de8f6e';
-      context.lineWidth = 2;
-      context.beginPath();
-      context.arc(0, hazard.size * 0.2, hazard.size * 0.22, 0.2 * Math.PI, 0.8 * Math.PI);
-      context.stroke();
-    }
-
-    context.restore();
-  };
+  const clipToCanvasX = (x) => ((x + 1) * 0.5) * GAME_WIDTH;
+  const clipToCanvasY = (y) => ((1 - y) * 0.5) * GAME_HEIGHT;
 
   const drawShot = (shot, getShotLength, offsetX, offsetY) => {
     const lifeRatio = clamp(shot.ttl / shot.maxTtl, 0, 1);
