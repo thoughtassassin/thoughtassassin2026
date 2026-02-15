@@ -34,7 +34,7 @@ export function createGameFlowController({
       const steps = Math.floor(carryMs / safeInterval);
       if (steps > 0) {
         carryMs -= steps * safeInterval;
-        return steps;
+        return 1;
       }
 
       return 0;
