@@ -1,3 +1,13 @@
+# Thought Assassin — Release v0.3.9
+
+## Highlights
+- Doubled Canvas compatibility mode typewriter pacing again for faster letter-by-letter overlay reveals.
+- Fixed contemplative philosophy cutscene pacing by allowing lower typewriter multipliers in flow control.
+- Preserved WebGPU/default narrative timing while fallback mode now applies the intended accelerated values.
+
+## Stability
+- Version metadata updated to `0.3.9` and release tagged as `v0.3.9`.
+
 # Thought Assassin — Release v0.3.8
 
 ## Highlights
