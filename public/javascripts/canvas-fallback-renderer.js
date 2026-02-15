@@ -20,7 +20,8 @@ export async function createCanvasFallbackRenderer({ canvas }) {
 
   context.imageSmoothingEnabled = false;
 
-  const geometryVertexData = new Float32Array(6 * 24576);
+  const maxVertices = 6 * 24576;
+  const geometryVertexData = new Float32Array(maxVertices * 6);
 
   let rabbitImage = null;
   try {
@@ -163,11 +164,7 @@ export async function createCanvasFallbackRenderer({ canvas }) {
       return;
     }
 
-    context.strokeStyle = 'rgba(255, 248, 226, 0.45)';
-    context.lineWidth = 1;
-    context.beginPath();
-    context.ellipse(player.x + offsetX, player.y + offsetY, player.drawWidth * 0.33, player.drawHeight * 0.43, 0, 0, Math.PI * 2);
-    context.stroke();
+    return;
   };
 
   const drawProceduralRabbit = (player, offsetX, offsetY) => {
@@ -269,7 +266,8 @@ export async function createCanvasFallbackRenderer({ canvas }) {
     getShotLength,
     getRabbitAnimationSample
   }) => {
-    context.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    context.fillStyle = 'rgb(8, 13, 31)';
+    context.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
     drawBackground(timeSeconds, shakeX, shakeY);
     drawCarrot(state.target.x, state.target.y, state.target.size, shakeX, shakeY);

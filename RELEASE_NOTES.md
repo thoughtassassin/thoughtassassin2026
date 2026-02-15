@@ -1,3 +1,13 @@
+# Thought Assassin — Release v0.3.7
+
+## Highlights
+- Fixed Canvas fallback black-ground issue by increasing geometry buffer capacity and stabilizing frame clear behavior.
+- Increased story typewriter speed in Canvas compatibility mode to better match perceived pacing.
+- Removed the rabbit highlight oval in Canvas fallback for cleaner sprite presentation.
+
+## Stability
+- Version metadata updated to `0.3.7` and release tagged as `v0.3.7`.
+
 # Thought Assassin — Release v0.3.6
 
 ## Highlights

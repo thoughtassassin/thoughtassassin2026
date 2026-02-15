@@ -96,6 +96,7 @@ import { state } from './game-state.js';
 let gpu = null;
 let canvasFallbackRenderer = null;
 let fallbackModeBadgeEl = null;
+const FALLBACK_STORY_TYPE_INTERVAL_MS = Math.max(8, Math.round(STORY_TYPE_INTERVAL_MS * 0.55));
 const contemplativeQuotePools = {
   respawn: [],
   gameOver: [],
@@ -327,6 +328,10 @@ function hideOverlay() {
 
 function clearStoryTypewriter() {
   flowController.clearStoryTypewriter();
+}
+
+function setStoryTypeIntervalMs(value) {
+  flowController.setStoryTypeIntervalMs(value);
 }
 
 function clearTitleCountdown() {
@@ -1579,6 +1584,7 @@ async function start() {
     gpu = await initWebGPU();
     canvasFallbackRenderer = null;
     setFallbackModeBadgeVisible(false);
+    setStoryTypeIntervalMs(STORY_TYPE_INTERVAL_MS);
     showStoryIntro();
     requestAnimationFrame(render);
   } catch (error) {
@@ -1586,11 +1592,13 @@ async function start() {
       canvasFallbackRenderer = await createCanvasFallbackRenderer({ canvas });
       gpu = null;
       setFallbackModeBadgeVisible(true);
+      setStoryTypeIntervalMs(FALLBACK_STORY_TYPE_INTERVAL_MS);
       setStatus('WebGPU unavailable. Running Canvas compatibility mode.');
       showStoryIntro();
       requestAnimationFrame(render);
     } catch {
       setFallbackModeBadgeVisible(false);
+      setStoryTypeIntervalMs(STORY_TYPE_INTERVAL_MS);
       showGraphicsUnsupportedState(error);
     }
   }

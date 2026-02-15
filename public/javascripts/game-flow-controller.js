@@ -10,6 +10,8 @@ export function createGameFlowController({
   RESPAWN_REFLECTIONS,
   callbacks
 }) {
+  let storyTypeIntervalMs = STORY_TYPE_INTERVAL_MS;
+
   const {
     gameOverlayEl,
     overlayTitleEl,
@@ -261,7 +263,7 @@ export function createGameFlowController({
       if (storyTypedChars >= storyFullText.length) {
         completeStoryTyping();
       }
-    }, STORY_TYPE_INTERVAL_MS);
+    }, storyTypeIntervalMs);
 
     setStatus('Initializing narrative feed...');
   }
@@ -647,6 +649,14 @@ export function createGameFlowController({
     }, profile.respawnReflectionTypeIntervalMs);
   }
 
+  function setStoryTypeIntervalMs(value) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return;
+    }
+    storyTypeIntervalMs = Math.max(4, Math.round(parsed));
+  }
+
   return {
     clearStoryTypewriter,
     clearTitleCountdown,
@@ -658,6 +668,7 @@ export function createGameFlowController({
     showStoryIntro,
     showTitleScreen,
     finishGame,
-    beginRespawnCountdown
+    beginRespawnCountdown,
+    setStoryTypeIntervalMs
   };
 }
