@@ -1565,7 +1565,7 @@ function setFallbackModeBadgeVisible(isVisible) {
 
   if (!fallbackModeBadgeEl) {
     fallbackModeBadgeEl = document.createElement('div');
-    fallbackModeBadgeEl.className = 'setting-btn';
+    fallbackModeBadgeEl.className = 'setting-btn fallback-mode-badge';
     fallbackModeBadgeEl.textContent = 'Renderer: Canvas Compatibility';
     fallbackModeBadgeEl.style.position = 'absolute';
     fallbackModeBadgeEl.style.top = '10px';

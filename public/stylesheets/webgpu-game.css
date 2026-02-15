@@ -546,6 +546,13 @@ body {
     right: 6px;
   }
 
+  .hud h1,
+  .settings-bar,
+  .touch-controls,
+  .fallback-mode-badge {
+    display: none !important;
+  }
+
   .top-overlay {
     padding: 3px 5px;
   }
@@ -556,7 +563,7 @@ body {
   }
 
   .touch-controls {
-    display: flex;
+    display: none;
     align-items: flex-end;
   }
 
@@ -566,7 +573,10 @@ body {
   }
 
   .stats {
-    font-size: clamp(0.62rem, 2.6vw, 0.8rem);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: clamp(0.6rem, 2.2vw, 0.72rem);
+    font-weight: 700;
+    letter-spacing: normal;
     gap: 6px 10px;
   }
 
