@@ -15,6 +15,8 @@ const gameOverlayEl = document.getElementById('gameOverlay');
 const overlayTitleEl = document.getElementById('overlayTitle');
 const overlayMessageEl = document.getElementById('overlayMessage');
 const overlayButtonEl = document.getElementById('overlayButton');
+const journalListEl = document.getElementById('journalList');
+const clearJournalButtonEl = document.getElementById('clearJournalButton');
 
 const GAME_WIDTH = 960;
 const GAME_HEIGHT = 540;
@@ -46,8 +48,13 @@ const WOLF_RENDER_SCALE = 1.55;
 const CARROT_RENDER_SCALE = 1.85;
 const CARROT_COLLECT_EFFECT_TTL = 0.45;
 const ENEMY_KILL_EFFECT_TTL = 0.35;
+const RABBIT_DEATH_ANIMATION_DURATION_MS = 2500;
+const PLAYER_SPAWN_ARMOR_DURATION = 1.2;
 const SOUNDTRACK_BPM = 132;
 const SOUNDTRACK_STEP_SECONDS = 60 / SOUNDTRACK_BPM / 2;
+const FINAL_MESSAGE_THEME_STEP_SECONDS = 0.56;
+const FINAL_MESSAGE_THEME_MELODY = [196, 220, 247, 220, null, 196, 175, 165, null, 220, 247, 196, null, 165, 147, null];
+const FINAL_MESSAGE_THEME_BASS = [98, null, 98, null, 92, null, 92, null, 87, null, 87, null, 82, null, 82, null];
 const DIFFICULTY_MAX_MULTIPLIER = 1.85;
 const EXTRA_WOLF_TRIGGER_TIME = 20;
 const RABBIT_FRAME_WIDTH = 167;
@@ -75,6 +82,8 @@ const STORY_INTRO_LINES = [
 ];
 const HIGH_SCORE_STORAGE_KEY = 'thoughtassassin.webgpu.highscore';
 const SETTINGS_STORAGE_KEY = 'thoughtassassin.webgpu.settings';
+const SESSION_JOURNAL_STORAGE_KEY = 'thoughtassassin.webgpu.sessionjournal';
+const SESSION_JOURNAL_MAX_ENTRIES = 8;
 const SOUNDTRACK_MELODY = [659, null, 784, 659, 988, 784, 659, 523, 587, null, 659, 587, 523, 440, 392, null];
 const SOUNDTRACK_BASS = [165, 165, 196, 196, 220, 220, 196, 196, 147, 147, 165, 165, 196, 196, 147, 147];
 const DIFFICULTY_PROFILES = {
@@ -83,6 +92,93 @@ const DIFFICULTY_PROFILES = {
   hard: { label: 'Hard', maxMultiplier: 2.35, extraWolfTime: 8 }
 };
 const DIFFICULTY_SEQUENCE = ['easy', 'normal', 'hard'];
+const RESPAWN_REFLECTIONS = [
+  'The thought-wolves devoured our moment, not our meaning.',
+  'I doubt, therefore I rise again against the wolves.',
+  'When the abyss of thought stared back, we chose return.',
+  'Absurd teeth found us — still, we answer with another step.',
+  'What consumed us now will forge the will to continue.',
+  'The buried fear wore a wolf-mask; we name it, and stand again.',
+  'No script saves us but the one we choose with our next step.',
+  'The will aches and asks for rest; still we walk into another dawn.'
+];
+const GAME_OVER_KOANS = [
+  'Two wolves meet at an empty gate; which one arrives?',
+  'The mind runs from fear—who is left to be chased?',
+  'When no thought is fed, where does the wolf sleep?',
+  'Before the howl is heard, who is listening?',
+  'You drop the burden of self; what still needs defending?',
+  'If the shadow is yours, why does it bite like a stranger?',
+  'No essence waits in the grass; what you choose is what remains.',
+  'The will clings, suffers, and clings again—what loosens first?'
+];
+const KOAN_CHAPTER_TAGS = [
+  'Chapter I: The Empty Gate',
+  'Chapter II: The Chasing Mind',
+  'Chapter III: The Quiet Wolf',
+  'Chapter IV: Before the Howl',
+  'Chapter V: Laying Down the Self'
+];
+const WIN_CHAPTER_TAGS = [
+  'Dawn Note I: Breath Returned',
+  'Dawn Note II: Chosen Meaning',
+  'Dawn Note III: Quiet Will',
+  'Dawn Note IV: Fear Outwalked',
+  'Dawn Note V: Self Kept'
+];
+const WIN_AFFIRMATIONS = [
+  'You faced what rose from within and answered it with motion.',
+  'You were not handed meaning; you made it, one choice at a time.',
+  'The will pressed hard, and you taught it to become grace.',
+  'Fear spoke loudly, but your actions spoke last.',
+  'You crossed the field without abandoning yourself.'
+];
+const CONTEMPLATIVE_POLISH_PROFILES = {
+  balanced: {
+    gameOverKoanTypeIntervalMs: 38,
+    gameOverKoanReadHoldMs: 3900,
+    gameOverFadeDurationMs: 760,
+    respawnReflectionTypeIntervalMs: 34,
+    respawnReflectionReadHoldMs: 1800,
+    respawnReflectionFadeDurationMs: 620,
+    contemplativePulseDurationMs: 520,
+    droneGain: 0.017,
+    droneAttackSeconds: 0.26,
+    droneLfoRate: 0.2,
+    droneLfoDepth: 0.009
+  },
+  serene: {
+    gameOverKoanTypeIntervalMs: 42,
+    gameOverKoanReadHoldMs: 4800,
+    gameOverFadeDurationMs: 900,
+    respawnReflectionTypeIntervalMs: 36,
+    respawnReflectionReadHoldMs: 2100,
+    respawnReflectionFadeDurationMs: 700,
+    contemplativePulseDurationMs: 620,
+    droneGain: 0.015,
+    droneAttackSeconds: 0.35,
+    droneLfoRate: 0.14,
+    droneLfoDepth: 0.008
+  },
+  dramatic: {
+    gameOverKoanTypeIntervalMs: 32,
+    gameOverKoanReadHoldMs: 3200,
+    gameOverFadeDurationMs: 680,
+    respawnReflectionTypeIntervalMs: 30,
+    respawnReflectionReadHoldMs: 1400,
+    respawnReflectionFadeDurationMs: 520,
+    contemplativePulseDurationMs: 440,
+    droneGain: 0.02,
+    droneAttackSeconds: 0.2,
+    droneLfoRate: 0.26,
+    droneLfoDepth: 0.011
+  }
+};
+const ACTIVE_CONTEMPLATIVE_POLISH_PROFILE = 'serene';
+
+function getContemplativePolishProfile() {
+  return CONTEMPLATIVE_POLISH_PROFILES[ACTIVE_CONTEMPLATIVE_POLISH_PROFILE] ?? CONTEMPLATIVE_POLISH_PROFILES.serene;
+}
 
 const RABBIT_ANIMATIONS = {
   idle: {
@@ -129,6 +225,7 @@ const state = {
     animationState: 'idle',
     animationTime: 0,
     hurtTimer: 0,
+    spawnArmorTimer: 0,
     isJumping: false,
     jumpVelocityY: 0,
     jumpStartY: 0,
@@ -156,8 +253,10 @@ const state = {
   hitFlashTimer: 0,
   hitStopTimer: 0,
   stageCardTimer: 0,
+  playerDeathEffectActive: false,
   screenShakeTime: 0,
   screenShakeStrength: 0,
+  sessionJournal: [],
   keys: new Set(),
   lastTime: 0,
   simulationAccumulator: 0,
@@ -170,13 +269,74 @@ let storyFullText = '';
 let storyTypedChars = 0;
 let titleCountdownTimer = null;
 let titleCountdownValue = 0;
+let rabbitDeathTimer = null;
+let respawnCountdownTimer = null;
+let respawnCountdownValue = 0;
+let gameOverKoanTypeTimer = null;
+let gameOverKoanHoldTimer = null;
+let gameOverKoanRevealTimer = null;
+let respawnReflectionTypeTimer = null;
+let respawnReflectionHoldTimer = null;
+let respawnReflectionRevealTimer = null;
+let winAffirmationTypeTimer = null;
+let winAffirmationHoldTimer = null;
+let winAffirmationRevealTimer = null;
+let contemplativePulseTimer = null;
+let contemplativeDroneDuckTimer = null;
+const contemplativeQuotePools = {
+  respawn: [],
+  gameOver: [],
+  chapter: [],
+  win: [],
+  winChapter: []
+};
 const audio = {
   context: null,
   soundtrackTimer: null,
   soundtrackStep: 0,
   soundtrackActive: false,
+  finalThemeTimer: null,
+  finalThemeStep: 0,
+  finalThemeActive: false,
+  contemplativeActive: false,
+  droneOsc: null,
+  droneGain: null,
+  droneLfo: null,
+  droneLfoGain: null,
   unlocked: false
 };
+
+function shuffleArray(values) {
+  for (let index = values.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const temp = values[index];
+    values[index] = values[swapIndex];
+    values[swapIndex] = temp;
+  }
+  return values;
+}
+
+function drawWithoutImmediateRepeat(source, poolKey) {
+  const pool = contemplativeQuotePools[poolKey];
+  if (!pool || source.length === 0) {
+    return source[0] || '';
+  }
+
+  if (pool.length === 0) {
+    pool.push(...shuffleArray(source.map((_, index) => index)));
+  }
+
+  const pickedIndex = pool.shift();
+  return source[pickedIndex] ?? source[0];
+}
+
+function setContemplativeTypeCursorActive(isActive) {
+  if (!overlayMessageEl) {
+    return;
+  }
+
+  overlayMessageEl.classList.toggle('contemplative-typing', isActive);
+}
 
 function updateHud() {
   scoreEl.textContent = String(state.score);
@@ -286,6 +446,88 @@ function loadSettings() {
   updateSettingsUI();
 }
 
+function saveSessionJournal() {
+  try {
+    window.sessionStorage.setItem(SESSION_JOURNAL_STORAGE_KEY, JSON.stringify(state.sessionJournal));
+  } catch {
+    return;
+  }
+}
+
+function loadSessionJournal() {
+  try {
+    const raw = window.sessionStorage.getItem(SESSION_JOURNAL_STORAGE_KEY);
+    if (!raw) {
+      state.sessionJournal = [];
+      return;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      state.sessionJournal = parsed
+        .filter((entry) => entry && entry.chapter && entry.koan)
+        .map((entry) => ({
+          chapter: entry.chapter,
+          koan: entry.koan,
+          score: entry.score,
+          outcome: entry.outcome === 'win' ? 'win' : 'loss'
+        }))
+        .slice(0, SESSION_JOURNAL_MAX_ENTRIES);
+    } else {
+      state.sessionJournal = [];
+    }
+  } catch {
+    state.sessionJournal = [];
+  }
+}
+
+function renderSessionJournal() {
+  if (!journalListEl) {
+    return;
+  }
+
+  journalListEl.replaceChildren();
+  if (state.sessionJournal.length === 0) {
+    const emptyItem = document.createElement('li');
+    emptyItem.textContent = 'No entries yet. Survive, fall, and reflect.';
+    journalListEl.appendChild(emptyItem);
+    return;
+  }
+
+  for (const entry of state.sessionJournal) {
+    const item = document.createElement('li');
+    const meta = document.createElement('span');
+    const outcomeLabel = entry.outcome === 'win' ? 'Win' : 'Fall';
+    meta.textContent = `${outcomeLabel} • ${entry.chapter} • Score ${entry.score}`;
+    const text = document.createElement('div');
+    text.textContent = entry.koan;
+    item.append(meta, text);
+    journalListEl.appendChild(item);
+  }
+}
+
+function appendSessionJournalEntry(chapter, koan, score, outcome = 'loss') {
+  state.sessionJournal.unshift({
+    chapter,
+    koan,
+    score,
+    outcome
+  });
+
+  if (state.sessionJournal.length > SESSION_JOURNAL_MAX_ENTRIES) {
+    state.sessionJournal.length = SESSION_JOURNAL_MAX_ENTRIES;
+  }
+
+  saveSessionJournal();
+  renderSessionJournal();
+}
+
+function clearSessionJournal() {
+  state.sessionJournal = [];
+  saveSessionJournal();
+  renderSessionJournal();
+}
+
 function getDifficultyProfile() {
   return DIFFICULTY_PROFILES[state.settings.difficulty] ?? DIFFICULTY_PROFILES.normal;
 }
@@ -294,8 +536,14 @@ function setMusicEnabled(enabled) {
   state.settings.musicEnabled = enabled;
   if (!enabled) {
     setSoundtrackActive(false);
+    stopContemplativeDrone();
+    stopFinalMessageTheme();
   } else if (state.running && !state.paused) {
     setSoundtrackActive(true);
+  } else if (audio.finalThemeActive && audio.unlocked) {
+    startFinalMessageTheme();
+  } else if (audio.contemplativeActive && audio.unlocked) {
+    startContemplativeDrone();
   }
 
   saveSettings();
@@ -323,6 +571,13 @@ function showOverlay(title, message, buttonLabel) {
     return;
   }
 
+  gameOverlayEl.classList.remove('existential-koan');
+  gameOverlayEl.classList.remove('existential-pulse');
+  overlayTitleEl.style.opacity = '';
+  overlayTitleEl.style.transition = '';
+  overlayMessageEl.style.opacity = '';
+  overlayMessageEl.style.transition = '';
+  overlayMessageEl.classList.remove('contemplative-typing');
   overlayTitleEl.textContent = title;
   overlayMessageEl.textContent = message;
   overlayButtonEl.textContent = buttonLabel;
@@ -336,6 +591,7 @@ function hideOverlay() {
   }
 
   gameOverlayEl.classList.add('hidden');
+  setContemplativeTypeCursorActive(false);
 }
 
 function clearStoryTypewriter() {
@@ -351,6 +607,103 @@ function clearTitleCountdown() {
     titleCountdownTimer = null;
   }
   titleCountdownValue = 0;
+}
+
+function clearRespawnCountdown() {
+  if (respawnCountdownTimer !== null) {
+    window.clearInterval(respawnCountdownTimer);
+    respawnCountdownTimer = null;
+  }
+  respawnCountdownValue = 0;
+}
+
+function clearRespawnReflectionSequence() {
+  if (respawnReflectionTypeTimer !== null) {
+    window.clearInterval(respawnReflectionTypeTimer);
+    respawnReflectionTypeTimer = null;
+  }
+  if (respawnReflectionHoldTimer !== null) {
+    window.clearTimeout(respawnReflectionHoldTimer);
+    respawnReflectionHoldTimer = null;
+  }
+  if (respawnReflectionRevealTimer !== null) {
+    window.clearTimeout(respawnReflectionRevealTimer);
+    respawnReflectionRevealTimer = null;
+  }
+  setContemplativeTypeCursorActive(false);
+}
+
+function clearWinAffirmationSequence() {
+  if (winAffirmationTypeTimer !== null) {
+    window.clearInterval(winAffirmationTypeTimer);
+    winAffirmationTypeTimer = null;
+  }
+  if (winAffirmationHoldTimer !== null) {
+    window.clearTimeout(winAffirmationHoldTimer);
+    winAffirmationHoldTimer = null;
+  }
+  if (winAffirmationRevealTimer !== null) {
+    window.clearTimeout(winAffirmationRevealTimer);
+    winAffirmationRevealTimer = null;
+  }
+  setContemplativeTypeCursorActive(false);
+}
+
+function pulseExistentialVignette() {
+  if (!gameOverlayEl || !gameOverlayEl.classList.contains('existential-koan')) {
+    return;
+  }
+
+  const profile = getContemplativePolishProfile();
+  gameOverlayEl.style.setProperty('--existential-pulse-ms', `${profile.contemplativePulseDurationMs}ms`);
+
+  gameOverlayEl.classList.remove('existential-pulse');
+  void gameOverlayEl.offsetWidth;
+  gameOverlayEl.classList.add('existential-pulse');
+
+  if (contemplativePulseTimer !== null) {
+    window.clearTimeout(contemplativePulseTimer);
+  }
+  contemplativePulseTimer = window.setTimeout(() => {
+    contemplativePulseTimer = null;
+    if (gameOverlayEl) {
+      gameOverlayEl.classList.remove('existential-pulse');
+    }
+  }, profile.contemplativePulseDurationMs);
+}
+
+function clearGameOverKoanSequence() {
+  if (gameOverKoanTypeTimer !== null) {
+    window.clearInterval(gameOverKoanTypeTimer);
+    gameOverKoanTypeTimer = null;
+  }
+  if (gameOverKoanHoldTimer !== null) {
+    window.clearTimeout(gameOverKoanHoldTimer);
+    gameOverKoanHoldTimer = null;
+  }
+  if (gameOverKoanRevealTimer !== null) {
+    window.clearTimeout(gameOverKoanRevealTimer);
+    gameOverKoanRevealTimer = null;
+  }
+
+  if (contemplativePulseTimer !== null) {
+    window.clearTimeout(contemplativePulseTimer);
+    contemplativePulseTimer = null;
+  }
+
+  if (overlayTitleEl) {
+    overlayTitleEl.style.opacity = '';
+    overlayTitleEl.style.transition = '';
+  }
+  if (overlayMessageEl) {
+    overlayMessageEl.style.opacity = '';
+    overlayMessageEl.style.transition = '';
+  }
+  if (gameOverlayEl) {
+    gameOverlayEl.classList.remove('existential-koan');
+    gameOverlayEl.classList.remove('existential-pulse');
+  }
+  setContemplativeTypeCursorActive(false);
 }
 
 function updateTitleCountdownMessage() {
@@ -410,6 +763,12 @@ function advanceStoryIntro() {
 }
 
 function showStoryIntro() {
+  clearGameOverKoanSequence();
+  clearRespawnReflectionSequence();
+  clearWinAffirmationSequence();
+  setContemplativeMode(false);
+  setFinalMessageThemeActive(false);
+  clearRespawnCountdown();
   clearTitleCountdown();
   state.gamePhase = 'story';
   state.running = false;
@@ -452,6 +811,12 @@ function showStoryIntro() {
 }
 
 function showTitleScreen() {
+  clearGameOverKoanSequence();
+  clearRespawnReflectionSequence();
+  clearWinAffirmationSequence();
+  setContemplativeMode(false);
+  setFinalMessageThemeActive(false);
+  clearRespawnCountdown();
   clearStoryTypewriter();
   clearTitleCountdown();
   state.gamePhase = 'title';
@@ -466,21 +831,223 @@ function showTitleScreen() {
   setStatus('Get ready...');
 }
 
+function revealLoseOverlayDetails(finalMessage) {
+  if (!overlayMessageEl || !overlayButtonEl) {
+    state.gamePhase = 'lose';
+    return;
+  }
+
+  overlayMessageEl.textContent = finalMessage;
+  overlayMessageEl.style.opacity = '1';
+  if (gameOverlayEl) {
+    gameOverlayEl.classList.remove('existential-koan');
+    gameOverlayEl.classList.remove('existential-pulse');
+  }
+  setContemplativeMode(false);
+  setFinalMessageThemeActive(true);
+  state.gamePhase = 'lose';
+  overlayButtonEl.style.display = 'inline-block';
+}
+
 function finishGame(reason) {
+  clearGameOverKoanSequence();
+  clearRespawnReflectionSequence();
+  clearWinAffirmationSequence();
+  clearRespawnCountdown();
   clearTitleCountdown();
+  setContemplativeMode(false);
+  setFinalMessageThemeActive(false);
   state.running = false;
   state.paused = false;
   setSoundtrackActive(false);
-  const title = reason === 'win' ? 'You Win!' : 'Game Over';
-  const message = reason === 'win'
-    ? `You survived with ${state.score} points.`
-    : `Final score: ${state.score}. Wolves were too much this run.`;
+  if (reason === 'win') {
+    const profile = getContemplativePolishProfile();
+    const winChapterTag = drawWithoutImmediateRepeat(WIN_CHAPTER_TAGS, 'winChapter');
+    const affirmation = drawWithoutImmediateRepeat(WIN_AFFIRMATIONS, 'win');
+    const winMessage = `You survived with ${state.score} points.`;
+    appendSessionJournalEntry(winChapterTag, affirmation, state.score, 'win');
+    state.gamePhase = 'win-affirmation';
+    showOverlay('You Win!', '', 'Play Again');
+    if (gameOverlayEl) {
+      gameOverlayEl.classList.add('existential-koan');
+    }
 
-  state.gamePhase = reason === 'win' ? 'win' : 'lose';
-  showOverlay(title, message, 'Play Again');
-  if (overlayButtonEl) {
-    overlayButtonEl.style.display = 'inline-block';
+    if (!overlayTitleEl || !overlayMessageEl || !overlayButtonEl) {
+      state.gamePhase = 'win';
+      showOverlay('You Win!', winMessage, 'Play Again');
+      if (overlayButtonEl) {
+        overlayButtonEl.style.display = 'inline-block';
+      }
+      return;
+    }
+
+    overlayButtonEl.style.display = 'none';
+    overlayTitleEl.style.opacity = '0';
+    overlayMessageEl.textContent = '';
+    overlayMessageEl.style.opacity = '1';
+
+    let typedChars = 0;
+    setContemplativeTypeCursorActive(true);
+    winAffirmationTypeTimer = window.setInterval(() => {
+      if (state.gamePhase !== 'win-affirmation') {
+        clearWinAffirmationSequence();
+        return;
+      }
+
+      typedChars = Math.min(typedChars + 1, affirmation.length);
+      overlayMessageEl.textContent = `${winChapterTag}\n${affirmation.slice(0, typedChars)}`;
+      pulseExistentialVignette();
+
+      if (typedChars >= affirmation.length) {
+        setContemplativeTypeCursorActive(false);
+        window.clearInterval(winAffirmationTypeTimer);
+        winAffirmationTypeTimer = null;
+
+        winAffirmationHoldTimer = window.setTimeout(() => {
+          if (state.gamePhase !== 'win-affirmation') {
+            clearWinAffirmationSequence();
+            return;
+          }
+
+          overlayTitleEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
+          overlayMessageEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
+          overlayTitleEl.style.opacity = '1';
+          overlayMessageEl.style.opacity = '0';
+
+          winAffirmationRevealTimer = window.setTimeout(() => {
+            if (state.gamePhase !== 'win-affirmation') {
+              clearWinAffirmationSequence();
+              return;
+            }
+
+            overlayMessageEl.textContent = winMessage;
+            overlayMessageEl.style.opacity = '0';
+            if (gameOverlayEl) {
+              gameOverlayEl.classList.remove('existential-koan');
+            }
+            setContemplativeMode(false);
+            requestAnimationFrame(() => {
+              if (state.gamePhase !== 'win-affirmation') {
+                return;
+              }
+              overlayMessageEl.style.opacity = '1';
+            });
+
+            winAffirmationRevealTimer = window.setTimeout(() => {
+              if (state.gamePhase !== 'win-affirmation') {
+                clearWinAffirmationSequence();
+                return;
+              }
+
+              state.gamePhase = 'win';
+              overlayButtonEl.style.display = 'inline-block';
+              clearWinAffirmationSequence();
+            }, profile.respawnReflectionFadeDurationMs + 40);
+          }, profile.respawnReflectionFadeDurationMs + 40);
+        }, profile.gameOverKoanReadHoldMs * 0.5);
+      }
+    }, profile.respawnReflectionTypeIntervalMs);
+
+    return;
   }
+
+  const koan = drawWithoutImmediateRepeat(GAME_OVER_KOANS, 'gameOver');
+  const chapterTag = drawWithoutImmediateRepeat(KOAN_CHAPTER_TAGS, 'chapter');
+  const profile = getContemplativePolishProfile();
+  const finalMessage = `Final score: ${state.score}. Wolves were too much this run.`;
+  appendSessionJournalEntry(chapterTag, koan, state.score);
+  state.gamePhase = 'lose-koan';
+  showOverlay('Game Over', '', 'Play Again');
+  if (gameOverlayEl) {
+    gameOverlayEl.classList.add('existential-koan');
+  }
+  setContemplativeMode(true);
+  setFinalMessageThemeActive(true);
+
+  if (!overlayTitleEl || !overlayMessageEl || !overlayButtonEl) {
+    state.gamePhase = 'lose';
+    showOverlay('Game Over', `${finalMessage} ${koan}`, 'Play Again');
+    if (overlayButtonEl) {
+      overlayButtonEl.style.display = 'inline-block';
+    }
+    return;
+  }
+
+  overlayButtonEl.style.display = 'none';
+  overlayTitleEl.style.opacity = '0';
+  overlayMessageEl.textContent = '';
+  overlayMessageEl.style.opacity = '1';
+
+  let typedChars = 0;
+  setContemplativeTypeCursorActive(true);
+  gameOverKoanTypeTimer = window.setInterval(() => {
+    if (state.gamePhase !== 'lose-koan') {
+      clearGameOverKoanSequence();
+      return;
+    }
+
+    typedChars = Math.min(typedChars + 1, koan.length);
+    overlayMessageEl.textContent = `${chapterTag}\n${koan.slice(0, typedChars)}`;
+    pulseExistentialVignette();
+
+    if (typedChars >= koan.length) {
+      setContemplativeTypeCursorActive(false);
+      window.clearInterval(gameOverKoanTypeTimer);
+      gameOverKoanTypeTimer = null;
+
+      gameOverKoanHoldTimer = window.setTimeout(() => {
+        if (state.gamePhase !== 'lose-koan') {
+          clearGameOverKoanSequence();
+          return;
+        }
+        try {
+          setFinalMessageThemeActive(true);
+          overlayTitleEl.style.transition = `opacity ${profile.gameOverFadeDurationMs}ms ease`;
+          overlayMessageEl.style.transition = `opacity ${profile.gameOverFadeDurationMs}ms ease`;
+          overlayTitleEl.style.opacity = '1';
+          overlayMessageEl.style.opacity = '0';
+
+          gameOverKoanRevealTimer = window.setTimeout(() => {
+            if (state.gamePhase !== 'lose-koan') {
+              clearGameOverKoanSequence();
+              return;
+            }
+
+            try {
+              setFinalMessageThemeActive(true);
+              overlayMessageEl.textContent = finalMessage;
+              overlayMessageEl.style.opacity = '0';
+              if (gameOverlayEl) {
+                gameOverlayEl.classList.remove('existential-koan');
+              }
+              setContemplativeMode(false);
+              requestAnimationFrame(() => {
+                if (state.gamePhase !== 'lose-koan') {
+                  return;
+                }
+                overlayMessageEl.style.opacity = '1';
+              });
+
+              gameOverKoanRevealTimer = window.setTimeout(() => {
+                if (state.gamePhase !== 'lose-koan') {
+                  clearGameOverKoanSequence();
+                  return;
+                }
+                revealLoseOverlayDetails(finalMessage);
+                clearGameOverKoanSequence();
+              }, profile.gameOverFadeDurationMs + 40);
+            } catch {
+              revealLoseOverlayDetails(finalMessage);
+              clearGameOverKoanSequence();
+            }
+          }, profile.gameOverFadeDurationMs + 40);
+        } catch {
+          revealLoseOverlayDetails(finalMessage);
+          clearGameOverKoanSequence();
+        }
+      }, profile.gameOverKoanReadHoldMs);
+    }
+  }, profile.gameOverKoanTypeIntervalMs);
 }
 
 function getDifficultyMultiplier() {
@@ -511,6 +1078,178 @@ function ensureAudioContext() {
   return audio.context;
 }
 
+function stopContemplativeDrone() {
+  if (contemplativeDroneDuckTimer !== null) {
+    window.clearTimeout(contemplativeDroneDuckTimer);
+    contemplativeDroneDuckTimer = null;
+  }
+
+  if (audio.droneOsc) {
+    audio.droneOsc.stop();
+    audio.droneOsc.disconnect();
+    audio.droneOsc = null;
+  }
+  if (audio.droneLfo) {
+    audio.droneLfo.stop();
+    audio.droneLfo.disconnect();
+    audio.droneLfo = null;
+  }
+  if (audio.droneLfoGain) {
+    audio.droneLfoGain.disconnect();
+    audio.droneLfoGain = null;
+  }
+  if (audio.droneGain) {
+    audio.droneGain.disconnect();
+    audio.droneGain = null;
+  }
+}
+
+function duckContemplativeDroneForFinalTheme() {
+  if (!audio.droneGain || !audio.context) {
+    return;
+  }
+
+  const now = audio.context.currentTime;
+  try {
+    audio.droneGain.gain.cancelScheduledValues(now);
+    audio.droneGain.gain.setValueAtTime(Math.max(0.0001, audio.droneGain.gain.value), now);
+    audio.droneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+  } catch {
+    stopContemplativeDrone();
+    return;
+  }
+
+  if (contemplativeDroneDuckTimer !== null) {
+    window.clearTimeout(contemplativeDroneDuckTimer);
+  }
+  contemplativeDroneDuckTimer = window.setTimeout(() => {
+    contemplativeDroneDuckTimer = null;
+    if (audio.contemplativeActive) {
+      stopContemplativeDrone();
+    }
+  }, 460);
+}
+
+function startContemplativeDrone() {
+  if (audio.droneOsc || !state.settings.musicEnabled) {
+    return;
+  }
+
+  const context = ensureAudioContext();
+  if (!context) {
+    return;
+  }
+
+  const profile = getContemplativePolishProfile();
+  const now = context.currentTime;
+  const droneGain = context.createGain();
+  droneGain.gain.setValueAtTime(0.0001, now);
+  droneGain.gain.exponentialRampToValueAtTime(profile.droneGain, now + profile.droneAttackSeconds);
+
+  const droneOsc = context.createOscillator();
+  droneOsc.type = 'triangle';
+  droneOsc.frequency.setValueAtTime(58, now);
+
+  const lfo = context.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.setValueAtTime(profile.droneLfoRate, now);
+  const lfoGain = context.createGain();
+  lfoGain.gain.setValueAtTime(profile.droneLfoDepth, now);
+
+  lfo.connect(lfoGain);
+  lfoGain.connect(droneGain.gain);
+  droneOsc.connect(droneGain);
+  droneGain.connect(context.destination);
+
+  droneOsc.start(now);
+  lfo.start(now);
+
+  audio.droneOsc = droneOsc;
+  audio.droneGain = droneGain;
+  audio.droneLfo = lfo;
+  audio.droneLfoGain = lfoGain;
+}
+
+function setContemplativeMode(isActive) {
+  audio.contemplativeActive = isActive;
+  if (isActive && state.settings.musicEnabled && audio.unlocked) {
+    startContemplativeDrone();
+  } else {
+    stopContemplativeDrone();
+  }
+}
+
+function tickFinalMessageTheme() {
+  if (!audio.finalThemeActive) {
+    return;
+  }
+
+  const context = ensureAudioContext();
+  if (!context) {
+    return;
+  }
+
+  const profile = getContemplativePolishProfile();
+  const stepIndex = audio.finalThemeStep % FINAL_MESSAGE_THEME_MELODY.length;
+  const melodyNote = FINAL_MESSAGE_THEME_MELODY[stepIndex];
+  const bassNote = FINAL_MESSAGE_THEME_BASS[stepIndex];
+  const now = context.currentTime;
+
+  if (melodyNote) {
+    playToneAt(context, now, {
+      frequency: melodyNote,
+      duration: FINAL_MESSAGE_THEME_STEP_SECONDS * 0.96,
+      type: 'triangle',
+      gain: profile.droneGain * 1.05
+    });
+  }
+
+  if (bassNote) {
+    playToneAt(context, now, {
+      frequency: bassNote,
+      duration: FINAL_MESSAGE_THEME_STEP_SECONDS,
+      type: 'sine',
+      gain: profile.droneGain * 0.75
+    });
+  }
+
+  audio.finalThemeStep += 1;
+}
+
+function startFinalMessageTheme() {
+  if (audio.finalThemeTimer || !state.settings.musicEnabled) {
+    return;
+  }
+
+  if (!ensureAudioContext()) {
+    return;
+  }
+
+  duckContemplativeDroneForFinalTheme();
+
+  audio.finalThemeStep = 0;
+  tickFinalMessageTheme();
+  audio.finalThemeTimer = window.setInterval(tickFinalMessageTheme, FINAL_MESSAGE_THEME_STEP_SECONDS * 1000);
+}
+
+function stopFinalMessageTheme() {
+  if (!audio.finalThemeTimer) {
+    return;
+  }
+
+  window.clearInterval(audio.finalThemeTimer);
+  audio.finalThemeTimer = null;
+}
+
+function setFinalMessageThemeActive(isActive) {
+  audio.finalThemeActive = isActive;
+  if (isActive && state.settings.musicEnabled && audio.unlocked) {
+    startFinalMessageTheme();
+  } else {
+    stopFinalMessageTheme();
+  }
+}
+
 function unlockAudioFromGesture() {
   if (audio.unlocked) {
     ensureAudioContext();
@@ -521,6 +1260,12 @@ function unlockAudioFromGesture() {
   ensureAudioContext();
   if (audio.soundtrackActive) {
     startSoundtrack();
+  }
+  if (audio.finalThemeActive) {
+    startFinalMessageTheme();
+  }
+  if (audio.contemplativeActive) {
+    startContemplativeDrone();
   }
 }
 
@@ -688,6 +1433,229 @@ function spawnScorePopup(x, y, scoreValue, kind = 'collect') {
   window.setTimeout(() => {
     popup.remove();
   }, 760);
+}
+
+function mapWorldToFxLayer(x, y) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (x / GAME_WIDTH) * rect.width,
+    y: (y / GAME_HEIGHT) * rect.height,
+    width: rect.width
+  };
+}
+
+function clearRabbitDeathAnimation() {
+  if (rabbitDeathTimer !== null) {
+    window.clearTimeout(rabbitDeathTimer);
+    rabbitDeathTimer = null;
+  }
+
+  clearRespawnCountdown();
+  clearRespawnReflectionSequence();
+  clearWinAffirmationSequence();
+  setContemplativeMode(false);
+  setFinalMessageThemeActive(false);
+
+  state.playerDeathEffectActive = false;
+  if (fxLayerEl) {
+    fxLayerEl.querySelectorAll('.rabbit-death-sequence').forEach((node) => node.remove());
+  }
+}
+
+function updateRespawnCountdownMessage(livesLeft) {
+  if (!overlayMessageEl || state.gamePhase !== 'respawn') {
+    return;
+  }
+
+  overlayMessageEl.textContent = `Lives left: ${livesLeft}. Respawning in ${respawnCountdownValue}`;
+}
+
+function getRespawnReflection() {
+  return drawWithoutImmediateRepeat(RESPAWN_REFLECTIONS, 'respawn');
+}
+
+function beginRespawnCountdown(livesLeft) {
+  clearRespawnCountdown();
+  clearRespawnReflectionSequence();
+  state.gamePhase = 'respawn-reflection';
+  showOverlay('', '', 'Continue');
+  if (gameOverlayEl) {
+    gameOverlayEl.classList.add('existential-koan');
+  }
+  setContemplativeMode(true);
+
+  const reflection = getRespawnReflection();
+  const profile = getContemplativePolishProfile();
+  if (overlayButtonEl) {
+    overlayButtonEl.style.display = 'none';
+  }
+  if (!overlayTitleEl || !overlayMessageEl) {
+    state.gamePhase = 'respawn';
+    respawnCountdownValue = 3;
+    updateRespawnCountdownMessage(livesLeft);
+    respawnCountdownTimer = window.setInterval(() => {
+      if (state.gamePhase !== 'respawn') {
+        clearRespawnCountdown();
+        return;
+      }
+
+      respawnCountdownValue -= 1;
+      if (respawnCountdownValue <= 0) {
+        clearRespawnCountdown();
+        hideOverlay();
+        state.gamePhase = 'playing';
+        state.running = true;
+        state.paused = false;
+        setContemplativeMode(false);
+        setSoundtrackActive(true);
+        setStatus('Collect targets and survive.');
+        return;
+      }
+
+      updateRespawnCountdownMessage(livesLeft);
+    }, 1000);
+    return;
+  }
+
+  if (overlayTitleEl) {
+    overlayTitleEl.textContent = 'Breathe. Return.';
+    overlayTitleEl.style.opacity = '0';
+  }
+  if (overlayMessageEl) {
+    overlayMessageEl.textContent = '';
+    overlayMessageEl.style.opacity = '1';
+  }
+
+  let typedChars = 0;
+  setContemplativeTypeCursorActive(true);
+  respawnReflectionTypeTimer = window.setInterval(() => {
+    if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
+      clearRespawnReflectionSequence();
+      return;
+    }
+
+    typedChars = Math.min(typedChars + 1, reflection.length);
+    overlayMessageEl.textContent = reflection.slice(0, typedChars);
+    pulseExistentialVignette();
+
+    if (typedChars >= reflection.length) {
+      setContemplativeTypeCursorActive(false);
+      window.clearInterval(respawnReflectionTypeTimer);
+      respawnReflectionTypeTimer = null;
+
+      respawnReflectionHoldTimer = window.setTimeout(() => {
+        if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
+          clearRespawnReflectionSequence();
+          return;
+        }
+
+        if (overlayTitleEl) {
+          overlayTitleEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
+          overlayTitleEl.style.opacity = '1';
+        }
+        overlayMessageEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
+        overlayMessageEl.style.opacity = '0';
+
+        respawnReflectionRevealTimer = window.setTimeout(() => {
+          if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
+            clearRespawnReflectionSequence();
+            return;
+          }
+
+          state.gamePhase = 'respawn';
+          respawnCountdownValue = 3;
+          updateRespawnCountdownMessage(livesLeft);
+          overlayMessageEl.style.opacity = '0';
+
+          requestAnimationFrame(() => {
+            if (state.gamePhase !== 'respawn') {
+              return;
+            }
+            overlayMessageEl.style.opacity = '1';
+          });
+
+          respawnCountdownTimer = window.setInterval(() => {
+            if (state.gamePhase !== 'respawn') {
+              clearRespawnCountdown();
+              return;
+            }
+
+            respawnCountdownValue -= 1;
+            if (respawnCountdownValue <= 0) {
+              clearRespawnCountdown();
+              clearRespawnReflectionSequence();
+              hideOverlay();
+              state.gamePhase = 'playing';
+              state.running = true;
+              state.paused = false;
+              setContemplativeMode(false);
+              setSoundtrackActive(true);
+              setStatus('Collect targets and survive.');
+              return;
+            }
+
+            updateRespawnCountdownMessage(livesLeft);
+          }, 1000);
+        }, profile.respawnReflectionFadeDurationMs + 60);
+      }, profile.respawnReflectionReadHoldMs);
+    }
+  }, profile.respawnReflectionTypeIntervalMs);
+}
+
+function spawnRabbitDeathAnimation(x, y, drawWidth) {
+  if (!fxLayerEl) {
+    return;
+  }
+
+  const mapped = mapWorldToFxLayer(x, y);
+  const sequence = document.createElement('div');
+  sequence.className = 'rabbit-death-sequence';
+  sequence.style.left = `${mapped.x}px`;
+  sequence.style.top = `${mapped.y}px`;
+  const scaledWidth = (drawWidth / GAME_WIDTH) * mapped.width;
+  sequence.style.setProperty('--rabbit-size', `${clamp(scaledWidth, 26, 74)}px`);
+  sequence.innerHTML = '<div class="rabbit-death-sprite" aria-hidden="true">🐇</div><div class="rabbit-death-poof" aria-hidden="true">💨</div><div class="rabbit-death-angel" aria-hidden="true">👼</div>';
+  fxLayerEl.appendChild(sequence);
+
+  window.setTimeout(() => {
+    sequence.remove();
+  }, RABBIT_DEATH_ANIMATION_DURATION_MS + 120);
+}
+
+function triggerRabbitDeathSequence(isFinalElimination = false) {
+  if (state.playerDeathEffectActive) {
+    return;
+  }
+
+  state.playerDeathEffectActive = true;
+  state.running = false;
+  state.paused = false;
+  state.keys.clear();
+  setSoundtrackActive(false);
+  spawnRabbitDeathAnimation(state.player.x, state.player.y, state.player.drawWidth);
+  setStatus('Rabbit down...');
+
+  rabbitDeathTimer = window.setTimeout(() => {
+    rabbitDeathTimer = null;
+    state.playerDeathEffectActive = false;
+    if (isFinalElimination) {
+      finishGame('lose');
+      return;
+    }
+
+    state.player.x = 80;
+    state.player.y = GAME_HEIGHT / 2;
+    state.player.jumpVelocityY = 0;
+    state.player.isJumping = false;
+    state.player.jumpElapsed = 0;
+    state.player.jumpStartY = state.player.y;
+    state.player.hurtTimer = 0.35;
+    state.player.spawnArmorTimer = PLAYER_SPAWN_ARMOR_DURATION;
+    state.player.animationState = 'hurt';
+    state.player.animationTime = 0;
+    state.hitStopTimer = 0;
+    beginRespawnCountdown(state.lives);
+  }, RABBIT_DEATH_ANIMATION_DURATION_MS);
 }
 
 function clamp(value, min, max) {
@@ -861,8 +1829,13 @@ function hitHazardByShot(hazard, shotDirection = 1) {
 }
 
 function resetGame() {
+  clearRabbitDeathAnimation();
+  clearGameOverKoanSequence();
+  clearWinAffirmationSequence();
   clearStoryTypewriter();
   clearTitleCountdown();
+  clearRespawnCountdown();
+  setFinalMessageThemeActive(false);
   hideOverlay();
   state.gamePhase = 'playing';
   state.score = 0;
@@ -875,6 +1848,7 @@ function resetGame() {
   state.player.animationState = 'idle';
   state.player.animationTime = 0;
   state.player.hurtTimer = 0;
+  state.player.spawnArmorTimer = PLAYER_SPAWN_ARMOR_DURATION;
   state.player.isJumping = false;
   state.player.jumpVelocityY = 0;
   state.player.drawWidth = PLAYER_DRAW_WIDTH_BASE;
@@ -897,6 +1871,7 @@ function resetGame() {
   state.hitFlashTimer = 0;
   state.hitStopTimer = 0;
   state.stageCardTimer = 0;
+  state.playerDeathEffectActive = false;
   state.screenShakeTime = 0;
   state.screenShakeStrength = 0;
   state.lastTime = 0;
@@ -948,7 +1923,7 @@ function setupInput() {
       return;
     }
 
-    if ((event.key === 'Enter' || event.code === 'Space') && !state.running && state.gamePhase !== 'playing' && state.gamePhase !== 'title') {
+    if ((event.key === 'Enter' || event.code === 'Space') && !state.running && state.gamePhase !== 'playing' && state.gamePhase !== 'title' && state.gamePhase !== 'respawn' && state.gamePhase !== 'respawn-reflection' && state.gamePhase !== 'lose-koan' && state.gamePhase !== 'win-affirmation') {
       resetGame();
       return;
     }
@@ -993,6 +1968,12 @@ function setupInput() {
   if (fullscreenToggleEl) {
     fullscreenToggleEl.addEventListener('click', () => {
       toggleFullscreen();
+    });
+  }
+
+  if (clearJournalButtonEl) {
+    clearJournalButtonEl.addEventListener('click', () => {
+      clearSessionJournal();
     });
   }
 
@@ -1184,6 +2165,7 @@ function update(dt) {
   }
 
   state.player.hurtTimer = Math.max(0, state.player.hurtTimer - dt);
+  state.player.spawnArmorTimer = Math.max(0, state.player.spawnArmorTimer - dt);
   state.fireCooldown = Math.max(0, state.fireCooldown - dt);
   state.hitFlashTimer = Math.max(0, state.hitFlashTimer - dt);
   state.screenShakeTime = Math.max(0, state.screenShakeTime - dt);
@@ -1325,16 +2307,15 @@ function update(dt) {
       continue;
     }
 
+    if (state.player.spawnArmorTimer > 0) {
+      continue;
+    }
+
     if (intersects(state.player, hazard)) {
       state.lives -= 1;
-      state.player.x = 80;
-      state.player.y = GAME_HEIGHT / 2;
-      state.player.hurtTimer = 0.35;
       updateHud();
 
-      if (state.lives <= 0) {
-        finishGame('lose');
-      }
+      triggerRabbitDeathSequence(state.lives <= 0);
 
       break;
     }
@@ -2495,26 +3476,28 @@ function render(timestamp) {
   pass.setVertexBuffer(0, gpu.vertexBuffer);
   pass.draw(vertexCount);
 
-  const animationSample = getRabbitAnimationSample(gpu.spriteTextureWidth);
+  if (!state.playerDeathEffectActive) {
+    const animationSample = getRabbitAnimationSample(gpu.spriteTextureWidth);
 
-  writeSprite(
-    gpu.spriteVertexData,
-    state.player.x,
-    state.player.y,
-    state.player.drawWidth,
-    state.player.drawHeight,
-    animationSample.frameRect,
-    gpu.spriteTextureWidth,
-    gpu.spriteTextureHeight,
-    shakeX,
-    shakeY
-  );
-  gpu.device.queue.writeBuffer(gpu.spriteVertexBuffer, 0, gpu.spriteVertexData);
+    writeSprite(
+      gpu.spriteVertexData,
+      state.player.x,
+      state.player.y,
+      state.player.drawWidth,
+      state.player.drawHeight,
+      animationSample.frameRect,
+      gpu.spriteTextureWidth,
+      gpu.spriteTextureHeight,
+      shakeX,
+      shakeY
+    );
+    gpu.device.queue.writeBuffer(gpu.spriteVertexBuffer, 0, gpu.spriteVertexData);
 
-  pass.setPipeline(gpu.spritePipeline);
-  pass.setBindGroup(0, gpu.spriteBindGroup);
-  pass.setVertexBuffer(0, gpu.spriteVertexBuffer);
-  pass.draw(6);
+    pass.setPipeline(gpu.spritePipeline);
+    pass.setBindGroup(0, gpu.spriteBindGroup);
+    pass.setVertexBuffer(0, gpu.spriteVertexBuffer);
+    pass.draw(6);
+  }
   pass.end();
 
   gpu.device.queue.submit([encoder.finish()]);
@@ -2525,6 +3508,8 @@ async function start() {
   setupInput();
   loadHighScore();
   loadSettings();
+  loadSessionJournal();
+  renderSessionJournal();
   updateHud();
   fitStageToViewport();
 

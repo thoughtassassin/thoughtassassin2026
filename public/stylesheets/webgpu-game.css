@@ -148,6 +148,54 @@ body {
   z-index: 7;
 }
 
+.game-overlay.existential-koan {
+  background: rgba(1, 2, 8, 0.9);
+  overflow: hidden;
+}
+
+.game-overlay.existential-koan::before {
+  content: '';
+  position: absolute;
+  inset: -18%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, rgba(17, 20, 45, 0.1) 0%, rgba(2, 4, 14, 0.58) 44%, rgba(0, 0, 0, 0.92) 100%);
+  opacity: 0.58;
+}
+
+.game-overlay.existential-koan.existential-pulse::before {
+  animation: existential-vignette-pulse var(--existential-pulse-ms, 620ms) ease-out;
+}
+
+.game-overlay.existential-koan h2,
+.game-overlay.existential-koan p,
+.game-overlay.existential-koan button {
+  position: relative;
+  z-index: 1;
+}
+
+.game-overlay.existential-koan h2 {
+  color: #bfc9ff;
+}
+
+.game-overlay.existential-koan p {
+  color: #d7ddff;
+  white-space: pre-line;
+  line-height: 1.45;
+}
+
+@keyframes existential-vignette-pulse {
+  0% {
+    opacity: 0.52;
+  }
+  35% {
+    opacity: 0.76;
+  }
+  100% {
+    opacity: 0.58;
+  }
+}
+
 .game-overlay.hidden {
   display: none;
 }
@@ -161,6 +209,22 @@ body {
   margin: 0;
   font-size: 1rem;
   color: #c8d7ff;
+}
+
+.game-overlay p.contemplative-typing::after {
+  content: '▌';
+  margin-left: 0.18em;
+  opacity: 0.75;
+  animation: contemplative-cursor-blink 820ms steps(1, end) infinite;
+}
+
+@keyframes contemplative-cursor-blink {
+  0%, 45% {
+    opacity: 0.82;
+  }
+  46%, 100% {
+    opacity: 0.08;
+  }
 }
 
 .game-overlay button {
@@ -238,6 +302,96 @@ body {
   text-shadow: 0 0 8px #ff5c1a, 0 0 2px #000;
 }
 
+.rabbit-death-sequence {
+  --rabbit-size: 48px;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: calc(var(--rabbit-size) * 1.5);
+  height: calc(var(--rabbit-size) * 1.5);
+  pointer-events: none;
+  z-index: 6;
+}
+
+.rabbit-death-sprite,
+.rabbit-death-poof,
+.rabbit-death-angel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  user-select: none;
+  line-height: 1;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.6));
+}
+
+.rabbit-death-sprite {
+  font-size: var(--rabbit-size);
+  opacity: 1;
+  animation: rabbit-spiral-shrink 950ms cubic-bezier(0.25, 0.74, 0.34, 1) forwards;
+}
+
+.rabbit-death-poof {
+  font-size: calc(var(--rabbit-size) * 0.95);
+  opacity: 0;
+  animation: rabbit-poof 430ms ease-out 820ms forwards;
+}
+
+.rabbit-death-angel {
+  font-size: calc(var(--rabbit-size) * 0.9);
+  opacity: 0;
+  animation: rabbit-angel-rise 1500ms ease-in 980ms forwards;
+}
+
+@keyframes rabbit-spiral-shrink {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(1);
+  }
+  22% {
+    transform: translate(-50%, -50%) translate(16px, -10px) rotate(170deg) scale(0.82);
+  }
+  48% {
+    transform: translate(-50%, -50%) translate(0, -22px) rotate(360deg) scale(0.56);
+  }
+  74% {
+    transform: translate(-50%, -50%) translate(-16px, -10px) rotate(540deg) scale(0.28);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(0, 0) rotate(720deg) scale(0.04);
+  }
+}
+
+@keyframes rabbit-poof {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -52%) scale(1.16);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -65%) scale(1.45);
+  }
+}
+
+@keyframes rabbit-angel-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(0) scale(0.72);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -58%) translateY(0) scale(0.94);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(-140vh) scale(1.02);
+  }
+}
+
 @keyframes collect-pop {
   0% {
     opacity: 0;
@@ -294,6 +448,57 @@ body {
   gap: 14px;
   margin-top: 10px;
   user-select: none;
+}
+
+.session-journal {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(118, 146, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(7, 11, 24, 0.62);
+}
+
+.session-journal h2 {
+  margin: 0;
+  font-size: 0.66rem;
+  color: #dce5ff;
+}
+
+.session-journal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#clearJournalButton {
+  font-size: 0.54rem;
+  padding: 2px 6px;
+}
+
+.session-journal p {
+  margin: 4px 0 8px;
+  font-size: 0.56rem;
+  color: #9fb5ff;
+}
+
+.session-journal ol {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  max-height: 155px;
+  overflow-y: auto;
+}
+
+.session-journal li {
+  font-size: 0.56rem;
+  line-height: 1.4;
+  color: #d8deff;
+}
+
+.session-journal li span {
+  color: #9fb5ff;
 }
 
 .touch-pad {
