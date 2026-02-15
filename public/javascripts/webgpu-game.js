@@ -316,6 +316,8 @@ function showOverlay(title, message, buttonLabel) {
   overlayTitleEl.textContent = title;
   overlayMessageEl.textContent = message;
   overlayButtonEl.textContent = buttonLabel;
+  overlayButtonEl.style.visibility = 'visible';
+  overlayButtonEl.style.pointerEvents = 'auto';
   gameOverlayEl.classList.remove('terminal-overlay');
   gameOverlayEl.classList.remove('hidden');
 }

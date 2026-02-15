@@ -412,7 +412,7 @@ export function createGameFlowController({
     setContemplativeMode(false);
     setFinalMessageThemeActive(true);
     setGamePhase('lose');
-    overlayButtonEl.style.display = 'inline-block';
+    showOverlayButton('Play Again');
   }
 
   function finishGame(reason) {
@@ -443,12 +443,12 @@ export function createGameFlowController({
         setGamePhase('win');
         showOverlay('You Win!', winMessage, 'Play Again');
         if (overlayButtonEl) {
-          overlayButtonEl.style.display = 'inline-block';
+          showOverlayButton('Play Again');
         }
         return;
       }
 
-      overlayButtonEl.style.display = 'none';
+      hideOverlayButton();
       overlayTitleEl.style.opacity = '0';
       overlayMessageEl.textContent = '';
       overlayMessageEl.style.opacity = '1';
@@ -561,7 +561,7 @@ export function createGameFlowController({
       setGamePhase('lose');
       showOverlay('Game Over', `${finalMessage} ${koan}`, 'Play Again');
       if (overlayButtonEl) {
-        overlayButtonEl.style.display = 'inline-block';
+        showOverlayButton('Play Again');
       }
       return;
     }
