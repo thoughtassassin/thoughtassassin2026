@@ -341,6 +341,10 @@ function setTypewriterSpeedMultiplier(value) {
   flowController.setTypewriterSpeedMultiplier(value);
 }
 
+function setTypewriterInstantMode(value) {
+  flowController.setTypewriterInstantMode(value);
+}
+
 function clearTitleCountdown() {
   flowController.clearTitleCountdown();
 }
@@ -1600,6 +1604,7 @@ async function start() {
     setFallbackModeBadgeVisible(false);
     setStoryTypeIntervalMs(STORY_TYPE_INTERVAL_MS);
     setTypewriterSpeedMultiplier(1);
+    setTypewriterInstantMode(false);
     showStoryIntro();
     requestAnimationFrame(render);
   } catch (error) {
@@ -1609,6 +1614,7 @@ async function start() {
       setFallbackModeBadgeVisible(true);
       setStoryTypeIntervalMs(FALLBACK_STORY_TYPE_INTERVAL_MS);
       setTypewriterSpeedMultiplier(FALLBACK_TYPEWRITER_SPEED_MULTIPLIER);
+      setTypewriterInstantMode(true);
       setStatus('WebGPU unavailable. Running Canvas compatibility mode.');
       showStoryIntro();
       requestAnimationFrame(render);
@@ -1616,6 +1622,7 @@ async function start() {
       setFallbackModeBadgeVisible(false);
       setStoryTypeIntervalMs(STORY_TYPE_INTERVAL_MS);
       setTypewriterSpeedMultiplier(1);
+      setTypewriterInstantMode(false);
       showGraphicsUnsupportedState(error);
     }
   }

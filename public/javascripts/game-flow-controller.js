@@ -12,6 +12,7 @@ export function createGameFlowController({
 }) {
   let storyTypeIntervalMs = STORY_TYPE_INTERVAL_MS;
   let typewriterSpeedMultiplier = 1;
+  let typewriterInstantMode = false;
 
   const getScaledInterval = (intervalMs) => {
     const baseInterval = Number(intervalMs);
@@ -282,6 +283,12 @@ export function createGameFlowController({
     }
 
     clearStoryTypewriter();
+    if (typewriterInstantMode) {
+      completeStoryTyping();
+      setStatus('Initializing narrative feed...');
+      return;
+    }
+
     const storyStepper = createTypewriterStepper(getScaledInterval(storyTypeIntervalMs));
     const tickStoryTypewriter = () => {
       if (state.gamePhase !== 'story') {
@@ -389,6 +396,64 @@ export function createGameFlowController({
       overlayMessageEl.textContent = '';
       overlayMessageEl.style.opacity = '1';
 
+      const showWinAffirmationComplete = () => {
+        setContemplativeTypeCursorActive(false);
+        if (winAffirmationTypeTimer !== null) {
+          window.cancelAnimationFrame(winAffirmationTypeTimer);
+          window.clearInterval(winAffirmationTypeTimer);
+          winAffirmationTypeTimer = null;
+        }
+
+        winAffirmationHoldTimer = window.setTimeout(() => {
+          if (state.gamePhase !== 'win-affirmation') {
+            clearWinAffirmationSequence();
+            return;
+          }
+
+          overlayTitleEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
+          overlayMessageEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
+          overlayTitleEl.style.opacity = '1';
+          overlayMessageEl.style.opacity = '0';
+
+          winAffirmationRevealTimer = window.setTimeout(() => {
+            if (state.gamePhase !== 'win-affirmation') {
+              clearWinAffirmationSequence();
+              return;
+            }
+
+            overlayMessageEl.textContent = winMessage;
+            overlayMessageEl.style.opacity = '0';
+            if (gameOverlayEl) {
+              gameOverlayEl.classList.remove('existential-koan');
+            }
+            setContemplativeMode(false);
+            requestAnimationFrame(() => {
+              if (state.gamePhase !== 'win-affirmation') {
+                return;
+              }
+              overlayMessageEl.style.opacity = '1';
+            });
+
+            winAffirmationRevealTimer = window.setTimeout(() => {
+              if (state.gamePhase !== 'win-affirmation') {
+                clearWinAffirmationSequence();
+                return;
+              }
+
+              setGamePhase('win');
+              overlayButtonEl.style.display = 'inline-block';
+              clearWinAffirmationSequence();
+            }, profile.respawnReflectionFadeDurationMs + 40);
+          }, profile.respawnReflectionFadeDurationMs + 40);
+        }, profile.gameOverKoanReadHoldMs * 0.5);
+      };
+
+      if (typewriterInstantMode) {
+        overlayMessageEl.textContent = `${winChapterTag}\n${affirmation}`;
+        showWinAffirmationComplete();
+        return;
+      }
+
       let typedChars = 0;
       setContemplativeTypeCursorActive(true);
       const winAffirmationStepper = createTypewriterStepper(getScaledInterval(profile.respawnReflectionTypeIntervalMs));
@@ -409,53 +474,7 @@ export function createGameFlowController({
         pulseExistentialVignette();
 
         if (typedChars >= affirmation.length) {
-          setContemplativeTypeCursorActive(false);
-          window.cancelAnimationFrame(winAffirmationTypeTimer);
-          window.clearInterval(winAffirmationTypeTimer);
-          winAffirmationTypeTimer = null;
-
-          winAffirmationHoldTimer = window.setTimeout(() => {
-            if (state.gamePhase !== 'win-affirmation') {
-              clearWinAffirmationSequence();
-              return;
-            }
-
-            overlayTitleEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
-            overlayMessageEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
-            overlayTitleEl.style.opacity = '1';
-            overlayMessageEl.style.opacity = '0';
-
-            winAffirmationRevealTimer = window.setTimeout(() => {
-              if (state.gamePhase !== 'win-affirmation') {
-                clearWinAffirmationSequence();
-                return;
-              }
-
-              overlayMessageEl.textContent = winMessage;
-              overlayMessageEl.style.opacity = '0';
-              if (gameOverlayEl) {
-                gameOverlayEl.classList.remove('existential-koan');
-              }
-              setContemplativeMode(false);
-              requestAnimationFrame(() => {
-                if (state.gamePhase !== 'win-affirmation') {
-                  return;
-                }
-                overlayMessageEl.style.opacity = '1';
-              });
-
-              winAffirmationRevealTimer = window.setTimeout(() => {
-                if (state.gamePhase !== 'win-affirmation') {
-                  clearWinAffirmationSequence();
-                  return;
-                }
-
-                setGamePhase('win');
-                overlayButtonEl.style.display = 'inline-block';
-                clearWinAffirmationSequence();
-              }, profile.respawnReflectionFadeDurationMs + 40);
-            }, profile.respawnReflectionFadeDurationMs + 40);
-          }, profile.gameOverKoanReadHoldMs * 0.5);
+          showWinAffirmationComplete();
           return;
         }
 
@@ -493,6 +512,73 @@ export function createGameFlowController({
     overlayMessageEl.textContent = '';
     overlayMessageEl.style.opacity = '1';
 
+    const showGameOverKoanComplete = () => {
+      setContemplativeTypeCursorActive(false);
+      if (gameOverKoanTypeTimer !== null) {
+        window.cancelAnimationFrame(gameOverKoanTypeTimer);
+        window.clearInterval(gameOverKoanTypeTimer);
+        gameOverKoanTypeTimer = null;
+      }
+
+      gameOverKoanHoldTimer = window.setTimeout(() => {
+        if (state.gamePhase !== 'lose-koan') {
+          clearGameOverKoanSequence();
+          return;
+        }
+        try {
+          setFinalMessageThemeActive(true);
+          overlayTitleEl.style.transition = `opacity ${profile.gameOverFadeDurationMs}ms ease`;
+          overlayMessageEl.style.transition = `opacity ${profile.gameOverFadeDurationMs}ms ease`;
+          overlayTitleEl.style.opacity = '1';
+          overlayMessageEl.style.opacity = '0';
+
+          gameOverKoanRevealTimer = window.setTimeout(() => {
+            if (state.gamePhase !== 'lose-koan') {
+              clearGameOverKoanSequence();
+              return;
+            }
+
+            try {
+              setFinalMessageThemeActive(true);
+              overlayMessageEl.textContent = finalMessage;
+              overlayMessageEl.style.opacity = '0';
+              if (gameOverlayEl) {
+                gameOverlayEl.classList.remove('existential-koan');
+              }
+              setContemplativeMode(false);
+              requestAnimationFrame(() => {
+                if (state.gamePhase !== 'lose-koan') {
+                  return;
+                }
+                overlayMessageEl.style.opacity = '1';
+              });
+
+              gameOverKoanRevealTimer = window.setTimeout(() => {
+                if (state.gamePhase !== 'lose-koan') {
+                  clearGameOverKoanSequence();
+                  return;
+                }
+                revealLoseOverlayDetails(finalMessage);
+                clearGameOverKoanSequence();
+              }, profile.gameOverFadeDurationMs + 40);
+            } catch {
+              revealLoseOverlayDetails(finalMessage);
+              clearGameOverKoanSequence();
+            }
+          }, profile.gameOverFadeDurationMs + 40);
+        } catch {
+          revealLoseOverlayDetails(finalMessage);
+          clearGameOverKoanSequence();
+        }
+      }, profile.gameOverKoanReadHoldMs);
+    };
+
+    if (typewriterInstantMode) {
+      overlayMessageEl.textContent = `${chapterTag}\n${koan}`;
+      showGameOverKoanComplete();
+      return;
+    }
+
     let typedChars = 0;
     setContemplativeTypeCursorActive(true);
     const koanStepper = createTypewriterStepper(getScaledInterval(profile.gameOverKoanTypeIntervalMs));
@@ -513,62 +599,7 @@ export function createGameFlowController({
       pulseExistentialVignette();
 
       if (typedChars >= koan.length) {
-        setContemplativeTypeCursorActive(false);
-        window.cancelAnimationFrame(gameOverKoanTypeTimer);
-        window.clearInterval(gameOverKoanTypeTimer);
-        gameOverKoanTypeTimer = null;
-
-        gameOverKoanHoldTimer = window.setTimeout(() => {
-          if (state.gamePhase !== 'lose-koan') {
-            clearGameOverKoanSequence();
-            return;
-          }
-          try {
-            setFinalMessageThemeActive(true);
-            overlayTitleEl.style.transition = `opacity ${profile.gameOverFadeDurationMs}ms ease`;
-            overlayMessageEl.style.transition = `opacity ${profile.gameOverFadeDurationMs}ms ease`;
-            overlayTitleEl.style.opacity = '1';
-            overlayMessageEl.style.opacity = '0';
-
-            gameOverKoanRevealTimer = window.setTimeout(() => {
-              if (state.gamePhase !== 'lose-koan') {
-                clearGameOverKoanSequence();
-                return;
-              }
-
-              try {
-                setFinalMessageThemeActive(true);
-                overlayMessageEl.textContent = finalMessage;
-                overlayMessageEl.style.opacity = '0';
-                if (gameOverlayEl) {
-                  gameOverlayEl.classList.remove('existential-koan');
-                }
-                setContemplativeMode(false);
-                requestAnimationFrame(() => {
-                  if (state.gamePhase !== 'lose-koan') {
-                    return;
-                  }
-                  overlayMessageEl.style.opacity = '1';
-                });
-
-                gameOverKoanRevealTimer = window.setTimeout(() => {
-                  if (state.gamePhase !== 'lose-koan') {
-                    clearGameOverKoanSequence();
-                    return;
-                  }
-                  revealLoseOverlayDetails(finalMessage);
-                  clearGameOverKoanSequence();
-                }, profile.gameOverFadeDurationMs + 40);
-              } catch {
-                revealLoseOverlayDetails(finalMessage);
-                clearGameOverKoanSequence();
-              }
-            }, profile.gameOverFadeDurationMs + 40);
-          } catch {
-            revealLoseOverlayDetails(finalMessage);
-            clearGameOverKoanSequence();
-          }
-        }, profile.gameOverKoanReadHoldMs);
+        showGameOverKoanComplete();
         return;
       }
 
@@ -641,6 +672,77 @@ export function createGameFlowController({
       overlayMessageEl.style.opacity = '1';
     }
 
+    const showRespawnReflectionComplete = () => {
+      setContemplativeTypeCursorActive(false);
+      if (respawnReflectionTypeTimer !== null) {
+        window.cancelAnimationFrame(respawnReflectionTypeTimer);
+        window.clearInterval(respawnReflectionTypeTimer);
+        respawnReflectionTypeTimer = null;
+      }
+
+      respawnReflectionHoldTimer = window.setTimeout(() => {
+        if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
+          clearRespawnReflectionSequence();
+          return;
+        }
+
+        if (overlayTitleEl) {
+          overlayTitleEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
+          overlayTitleEl.style.opacity = '1';
+        }
+        overlayMessageEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
+        overlayMessageEl.style.opacity = '0';
+
+        respawnReflectionRevealTimer = window.setTimeout(() => {
+          if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
+            clearRespawnReflectionSequence();
+            return;
+          }
+
+          setGamePhase('respawn');
+          respawnCountdownValue = 3;
+          updateRespawnCountdownMessage(livesLeft);
+          overlayMessageEl.style.opacity = '0';
+
+          requestAnimationFrame(() => {
+            if (state.gamePhase !== 'respawn') {
+              return;
+            }
+            overlayMessageEl.style.opacity = '1';
+          });
+
+          respawnCountdownTimer = window.setInterval(() => {
+            if (state.gamePhase !== 'respawn') {
+              clearRespawnCountdown();
+              return;
+            }
+
+            respawnCountdownValue -= 1;
+            if (respawnCountdownValue <= 0) {
+              clearRespawnCountdown();
+              clearRespawnReflectionSequence();
+              hideOverlay();
+              setGamePhase('playing');
+              state.running = true;
+              state.paused = false;
+              setContemplativeMode(false);
+              setSoundtrackActive(true);
+              setStatus('Collect targets and survive.');
+              return;
+            }
+
+            updateRespawnCountdownMessage(livesLeft);
+          }, 1000);
+        }, profile.respawnReflectionFadeDurationMs + 60);
+      }, profile.respawnReflectionReadHoldMs);
+    };
+
+    if (typewriterInstantMode) {
+      overlayMessageEl.textContent = reflection;
+      showRespawnReflectionComplete();
+      return;
+    }
+
     let typedChars = 0;
     setContemplativeTypeCursorActive(true);
     const reflectionStepper = createTypewriterStepper(getScaledInterval(profile.respawnReflectionTypeIntervalMs));
@@ -661,66 +763,7 @@ export function createGameFlowController({
       pulseExistentialVignette();
 
       if (typedChars >= reflection.length) {
-        setContemplativeTypeCursorActive(false);
-        window.cancelAnimationFrame(respawnReflectionTypeTimer);
-        window.clearInterval(respawnReflectionTypeTimer);
-        respawnReflectionTypeTimer = null;
-
-        respawnReflectionHoldTimer = window.setTimeout(() => {
-          if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
-            clearRespawnReflectionSequence();
-            return;
-          }
-
-          if (overlayTitleEl) {
-            overlayTitleEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
-            overlayTitleEl.style.opacity = '1';
-          }
-          overlayMessageEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
-          overlayMessageEl.style.opacity = '0';
-
-          respawnReflectionRevealTimer = window.setTimeout(() => {
-            if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
-              clearRespawnReflectionSequence();
-              return;
-            }
-
-            setGamePhase('respawn');
-            respawnCountdownValue = 3;
-            updateRespawnCountdownMessage(livesLeft);
-            overlayMessageEl.style.opacity = '0';
-
-            requestAnimationFrame(() => {
-              if (state.gamePhase !== 'respawn') {
-                return;
-              }
-              overlayMessageEl.style.opacity = '1';
-            });
-
-            respawnCountdownTimer = window.setInterval(() => {
-              if (state.gamePhase !== 'respawn') {
-                clearRespawnCountdown();
-                return;
-              }
-
-              respawnCountdownValue -= 1;
-              if (respawnCountdownValue <= 0) {
-                clearRespawnCountdown();
-                clearRespawnReflectionSequence();
-                hideOverlay();
-                setGamePhase('playing');
-                state.running = true;
-                state.paused = false;
-                setContemplativeMode(false);
-                setSoundtrackActive(true);
-                setStatus('Collect targets and survive.');
-                return;
-              }
-
-              updateRespawnCountdownMessage(livesLeft);
-            }, 1000);
-          }, profile.respawnReflectionFadeDurationMs + 60);
-        }, profile.respawnReflectionReadHoldMs);
+        showRespawnReflectionComplete();
         return;
       }
 
@@ -745,6 +788,10 @@ export function createGameFlowController({
     typewriterSpeedMultiplier = Math.min(2.5, Math.max(0.01, parsed));
   }
 
+  function setTypewriterInstantMode(value) {
+    typewriterInstantMode = Boolean(value);
+  }
+
   return {
     clearStoryTypewriter,
     clearTitleCountdown,
@@ -758,6 +805,7 @@ export function createGameFlowController({
     finishGame,
     beginRespawnCountdown,
     setStoryTypeIntervalMs,
-    setTypewriterSpeedMultiplier
+    setTypewriterSpeedMultiplier,
+    setTypewriterInstantMode
   };
 }
