@@ -1614,7 +1614,7 @@ async function start() {
       setFallbackModeBadgeVisible(true);
       setStoryTypeIntervalMs(FALLBACK_STORY_TYPE_INTERVAL_MS);
       setTypewriterSpeedMultiplier(FALLBACK_TYPEWRITER_SPEED_MULTIPLIER);
-      setTypewriterInstantMode(true);
+      setTypewriterInstantMode(false);
       setStatus('WebGPU unavailable. Running Canvas compatibility mode.');
       showStoryIntro();
       requestAnimationFrame(render);
