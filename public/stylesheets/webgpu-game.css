@@ -561,9 +561,15 @@ body {
     padding: 3px 5px;
   }
 
+  .game-overlay {
+    padding-top: max(18px, env(safe-area-inset-top));
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+
   .game-overlay h2 {
-    line-height: 1.25;
-    padding-top: 2px;
+    line-height: 1.35;
+    margin-top: 4px;
+    padding-top: 6px;
   }
 
   .settings-bar {
