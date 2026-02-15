@@ -1,288 +1,98 @@
-const canvas = document.getElementById('gameCanvas');
-const scoreEl = document.getElementById('score');
-const highScoreEl = document.getElementById('highScore');
-const livesEl = document.getElementById('lives');
-const timeEl = document.getElementById('time');
-const statusEl = document.getElementById('status');
-const fxLayerEl = document.getElementById('fxLayer');
-const stageWrapEl = document.querySelector('.stage-wrap');
-const gamePageEl = document.querySelector('.game-page');
-const musicToggleEl = document.getElementById('musicToggle');
-const difficultyToggleEl = document.getElementById('difficultyToggle');
-const fullscreenToggleEl = document.getElementById('fullscreenToggle');
-const touchControlsEl = document.getElementById('touchControls');
-const gameOverlayEl = document.getElementById('gameOverlay');
-const overlayTitleEl = document.getElementById('overlayTitle');
-const overlayMessageEl = document.getElementById('overlayMessage');
-const overlayButtonEl = document.getElementById('overlayButton');
-const journalListEl = document.getElementById('journalList');
-const clearJournalButtonEl = document.getElementById('clearJournalButton');
-
-const GAME_WIDTH = 960;
-const GAME_HEIGHT = 540;
-const GAME_DURATION_SECONDS = 60;
-const FIXED_TIMESTEP = 1 / 60;
-const GROUND_SKY_SEAM_Y = 345;
-const PLAYER_JUMP_VELOCITY = -520;
-const PLAYER_GRAVITY = 1400;
-const FIRE_COOLDOWN_SECONDS = 0.14;
-const FIRE_SPEED = 760;
-const FIRE_LIFETIME = 0.22;
-const FIRE_MAX_LENGTH = 34;
-const FIRE_THICKNESS = 4;
-const HAZARD_FALL_GRAVITY = 1600;
-const HAZARD_RESPAWN_DELAY = 0.6;
-const HAZARD_FALL_LAUNCH_X_MIN = 180;
-const HAZARD_FALL_LAUNCH_X_MAX = 280;
-const HAZARD_FALL_LAUNCH_Y_MIN = -340;
-const HAZARD_FALL_LAUNCH_Y_MAX = -240;
-const HAZARD_TUMBLE_SPEED_MIN = 7.5;
-const HAZARD_TUMBLE_SPEED_MAX = 12.5;
-const HAZARD_KNOCKOUT_X_EYES_DURATION = 0.3;
-const HIT_FLASH_DURATION = 1 / 60;
-const HIT_STOP_DURATION = 3 / 60;
-const STAGE_CARD_DURATION = 0.9;
-const ENEMY_HIT_SCORE = 250;
-const CARROT_COLLECT_SCORE = 100;
-const WOLF_RENDER_SCALE = 1.55;
-const CARROT_RENDER_SCALE = 1.85;
-const CARROT_COLLECT_EFFECT_TTL = 0.45;
-const ENEMY_KILL_EFFECT_TTL = 0.35;
-const RABBIT_DEATH_ANIMATION_DURATION_MS = 2500;
-const PLAYER_SPAWN_ARMOR_DURATION = 1.2;
-const SOUNDTRACK_BPM = 132;
-const SOUNDTRACK_STEP_SECONDS = 60 / SOUNDTRACK_BPM / 2;
-const FINAL_MESSAGE_THEME_STEP_SECONDS = 0.56;
-const FINAL_MESSAGE_THEME_MELODY = [196, 220, 247, 220, null, 196, 175, 165, null, 220, 247, 196, null, 165, 147, null];
-const FINAL_MESSAGE_THEME_BASS = [98, null, 98, null, 92, null, 92, null, 87, null, 87, null, 82, null, 82, null];
-const DIFFICULTY_MAX_MULTIPLIER = 1.85;
-const EXTRA_WOLF_TRIGGER_TIME = 20;
-const RABBIT_FRAME_WIDTH = 167;
-const RABBIT_FRAME_HEIGHT = 283;
-const RABBIT_FRAME_COLUMNS = 8;
-const RABBIT_FRAME_X = [0, 167, 334, 505, 670, 835, 1005, 1172];
-const PLAYER_DRAW_WIDTH_BASE = 84;
-const PLAYER_DRAW_HEIGHT_BASE = 142;
-const PLAYER_PERSPECTIVE_FAR_SCALE = 0.68;
-const PLAYER_WALK_MIN_Y = GROUND_SKY_SEAM_Y - PLAYER_DRAW_HEIGHT_BASE / 2;
-const PLAYER_WALK_MAX_Y = GAME_HEIGHT - PLAYER_DRAW_HEIGHT_BASE / 2;
-const STORY_TYPE_INTERVAL_MS = 22;
-const STORY_INTRO_LINES = [
-  '> sunrise over the prairie should have meant peace,',
-  '> but something old and hungry woke in the grass.',
-  '',
-  '> the thought-wolves are not flesh alone —',
-  '> they are panic, doubt, and the voices that say you should stop.',
-  '',
-  '> the carrots are memory cores, scattered when the system fractured.',
-  '> recover them before the fear-loop deepens and the field collapses.',
-  '',
-  '> you are RABBIT-01.',
-  '> keep moving. keep breathing. keep firing.'
-];
-const HIGH_SCORE_STORAGE_KEY = 'thoughtassassin.webgpu.highscore';
-const SETTINGS_STORAGE_KEY = 'thoughtassassin.webgpu.settings';
-const SESSION_JOURNAL_STORAGE_KEY = 'thoughtassassin.webgpu.sessionjournal';
-const SESSION_JOURNAL_MAX_ENTRIES = 8;
-const SOUNDTRACK_MELODY = [659, null, 784, 659, 988, 784, 659, 523, 587, null, 659, 587, 523, 440, 392, null];
-const SOUNDTRACK_BASS = [165, 165, 196, 196, 220, 220, 196, 196, 147, 147, 165, 165, 196, 196, 147, 147];
-const DIFFICULTY_PROFILES = {
-  easy: { label: 'Easy', maxMultiplier: 1.35, extraWolfTime: 38 },
-  normal: { label: 'Normal', maxMultiplier: 1.85, extraWolfTime: 20 },
-  hard: { label: 'Hard', maxMultiplier: 2.35, extraWolfTime: 8 }
-};
-const DIFFICULTY_SEQUENCE = ['easy', 'normal', 'hard'];
-const RESPAWN_REFLECTIONS = [
-  'The thought-wolves devoured our moment, not our meaning.',
-  'I doubt, therefore I rise again against the wolves.',
-  'When the abyss of thought stared back, we chose return.',
-  'Absurd teeth found us — still, we answer with another step.',
-  'What consumed us now will forge the will to continue.',
-  'The buried fear wore a wolf-mask; we name it, and stand again.',
-  'No script saves us but the one we choose with our next step.',
-  'The will aches and asks for rest; still we walk into another dawn.'
-];
-const GAME_OVER_KOANS = [
-  'Two wolves meet at an empty gate; which one arrives?',
-  'The mind runs from fear—who is left to be chased?',
-  'When no thought is fed, where does the wolf sleep?',
-  'Before the howl is heard, who is listening?',
-  'You drop the burden of self; what still needs defending?',
-  'If the shadow is yours, why does it bite like a stranger?',
-  'No essence waits in the grass; what you choose is what remains.',
-  'The will clings, suffers, and clings again—what loosens first?'
-];
-const KOAN_CHAPTER_TAGS = [
-  'Chapter I: The Empty Gate',
-  'Chapter II: The Chasing Mind',
-  'Chapter III: The Quiet Wolf',
-  'Chapter IV: Before the Howl',
-  'Chapter V: Laying Down the Self'
-];
-const WIN_CHAPTER_TAGS = [
-  'Dawn Note I: Breath Returned',
-  'Dawn Note II: Chosen Meaning',
-  'Dawn Note III: Quiet Will',
-  'Dawn Note IV: Fear Outwalked',
-  'Dawn Note V: Self Kept'
-];
-const WIN_AFFIRMATIONS = [
-  'You faced what rose from within and answered it with motion.',
-  'You were not handed meaning; you made it, one choice at a time.',
-  'The will pressed hard, and you taught it to become grace.',
-  'Fear spoke loudly, but your actions spoke last.',
-  'You crossed the field without abandoning yourself.'
-];
-const CONTEMPLATIVE_POLISH_PROFILES = {
-  balanced: {
-    gameOverKoanTypeIntervalMs: 38,
-    gameOverKoanReadHoldMs: 3900,
-    gameOverFadeDurationMs: 760,
-    respawnReflectionTypeIntervalMs: 34,
-    respawnReflectionReadHoldMs: 1800,
-    respawnReflectionFadeDurationMs: 620,
-    contemplativePulseDurationMs: 520,
-    droneGain: 0.017,
-    droneAttackSeconds: 0.26,
-    droneLfoRate: 0.2,
-    droneLfoDepth: 0.009
-  },
-  serene: {
-    gameOverKoanTypeIntervalMs: 42,
-    gameOverKoanReadHoldMs: 4800,
-    gameOverFadeDurationMs: 900,
-    respawnReflectionTypeIntervalMs: 36,
-    respawnReflectionReadHoldMs: 2100,
-    respawnReflectionFadeDurationMs: 700,
-    contemplativePulseDurationMs: 620,
-    droneGain: 0.015,
-    droneAttackSeconds: 0.35,
-    droneLfoRate: 0.14,
-    droneLfoDepth: 0.008
-  },
-  dramatic: {
-    gameOverKoanTypeIntervalMs: 32,
-    gameOverKoanReadHoldMs: 3200,
-    gameOverFadeDurationMs: 680,
-    respawnReflectionTypeIntervalMs: 30,
-    respawnReflectionReadHoldMs: 1400,
-    respawnReflectionFadeDurationMs: 520,
-    contemplativePulseDurationMs: 440,
-    droneGain: 0.02,
-    droneAttackSeconds: 0.2,
-    droneLfoRate: 0.26,
-    droneLfoDepth: 0.011
-  }
-};
-const ACTIVE_CONTEMPLATIVE_POLISH_PROFILE = 'serene';
-
-function getContemplativePolishProfile() {
-  return CONTEMPLATIVE_POLISH_PROFILES[ACTIVE_CONTEMPLATIVE_POLISH_PROFILE] ?? CONTEMPLATIVE_POLISH_PROFILES.serene;
-}
-
-const RABBIT_ANIMATIONS = {
-  idle: {
-    fps: 2,
-    right: [1],
-    left: [1]
-  },
-  walk: {
-    fps: 12,
-    right: [1, 2, 3, 4, 5, 6, 7],
-    left: [1, 2, 3, 4, 5, 6, 7]
-  },
-  hurt: {
-    fps: 10,
-    right: [1, 0],
-    left: [1, 0]
-  },
-  jump: {
-    fps: 1,
-    right: [3],
-    left: [3]
-  }
-};
-
-const state = {
-  running: false,
-  paused: false,
-  gamePhase: 'title',
-  settings: {
-    musicEnabled: true,
-    difficulty: 'normal'
-  },
-  score: 0,
-  highScore: 0,
-  lives: 3,
-  timeLeft: GAME_DURATION_SECONDS,
-  elapsedTime: 0,
-  player: {
-    x: 80,
-    y: 270,
-    size: 26,
-    speed: 300,
-    facing: 1,
-    animationState: 'idle',
-    animationTime: 0,
-    hurtTimer: 0,
-    spawnArmorTimer: 0,
-    isJumping: false,
-    jumpVelocityY: 0,
-    jumpStartY: 0,
-    jumpElapsed: 0,
-    drawWidth: PLAYER_DRAW_WIDTH_BASE,
-    drawHeight: PLAYER_DRAW_HEIGHT_BASE
-  },
-  target: {
-    x: 720,
-    y: 200,
-    size: 20,
-    speed: 95,
-    vx: -1,
-    vy: 1
-  },
-  hazards: [
-    { x: 300, y: 120, size: 24, speed: 130, baseSpeed: 130, vx: 1, vy: 1, isFalling: false, fallVelocityX: 0, fallVelocityY: 0, fallSpin: 0, fallSpinSpeed: 0, respawnTimer: 0, knockoutEyesTimer: 0, hasGroundImpact: false, active: true },
-    { x: 560, y: 350, size: 30, speed: 155, baseSpeed: 155, vx: -1, vy: -1, isFalling: false, fallVelocityX: 0, fallVelocityY: 0, fallSpin: 0, fallSpinSpeed: 0, respawnTimer: 0, knockoutEyesTimer: 0, hasGroundImpact: false, active: true },
-    { x: 140, y: 200, size: 26, speed: 150, baseSpeed: 150, vx: 1, vy: -1, isFalling: false, fallVelocityX: 0, fallVelocityY: 0, fallSpin: 0, fallSpinSpeed: 0, respawnTimer: 0, knockoutEyesTimer: 0, hasGroundImpact: false, active: false }
-  ],
-  shots: [],
-  collectEffects: [],
-    enemyKillEffects: [],
-  fireCooldown: 0,
-  hitFlashTimer: 0,
-  hitStopTimer: 0,
-  stageCardTimer: 0,
-  playerDeathEffectActive: false,
-  screenShakeTime: 0,
-  screenShakeStrength: 0,
-  sessionJournal: [],
-  keys: new Set(),
-  lastTime: 0,
-  simulationAccumulator: 0,
-  countdownAccumulator: 0
-};
+import { createGamePhaseMachine } from './game-phase-machine.js';
+import { clamp, randomRange } from './math-utils.js';
+import { writeRectWH, writeSprite } from './render-primitives.js';
+import { createUiSystem } from './ui-system.js';
+import { createAudioSystem } from './audio-system.js';
+import { bounceCircle, intersects } from './game-loop-utils.js';
+import { createGameFlowController } from './game-flow-controller.js';
+import { createGameEffectsController } from './game-effects-controller.js';
+import {
+  drawCarrot as renderDrawCarrot,
+  drawPixelPasture as renderDrawPixelPasture,
+  getRabbitAnimationSample as renderGetRabbitAnimationSample,
+  drawWolfHead as renderDrawWolfHead
+} from './game-renderer.js';
+import {
+  canvas,
+  clearJournalButtonEl,
+  difficultyToggleEl,
+  fullscreenToggleEl,
+  fxLayerEl,
+  gameOverlayEl,
+  gamePageEl,
+  highScoreEl,
+  journalListEl,
+  livesEl,
+  musicToggleEl,
+  overlayButtonEl,
+  overlayMessageEl,
+  overlayTitleEl,
+  scoreEl,
+  stageWrapEl,
+  statusEl,
+  timeEl,
+  touchControlsEl
+} from './game-dom.js';
+import {
+  CARROT_COLLECT_EFFECT_TTL,
+  CARROT_COLLECT_SCORE,
+  ENEMY_HIT_SCORE,
+  ENEMY_KILL_EFFECT_TTL,
+  FINAL_MESSAGE_THEME_STEP_SECONDS,
+  FIRE_COOLDOWN_SECONDS,
+  FIRE_LIFETIME,
+  FIRE_MAX_LENGTH,
+  FIRE_SPEED,
+  FIRE_THICKNESS,
+  FIXED_TIMESTEP,
+  GAME_DURATION_SECONDS,
+  GAME_HEIGHT,
+  GAME_WIDTH,
+  HAZARD_FALL_GRAVITY,
+  HAZARD_FALL_LAUNCH_X_MAX,
+  HAZARD_FALL_LAUNCH_X_MIN,
+  HAZARD_FALL_LAUNCH_Y_MAX,
+  HAZARD_FALL_LAUNCH_Y_MIN,
+  HAZARD_KNOCKOUT_X_EYES_DURATION,
+  HAZARD_RESPAWN_DELAY,
+  HAZARD_TUMBLE_SPEED_MAX,
+  HAZARD_TUMBLE_SPEED_MIN,
+  HIGH_SCORE_STORAGE_KEY,
+  HIT_FLASH_DURATION,
+  HIT_STOP_DURATION,
+  PLAYER_DRAW_HEIGHT_BASE,
+  PLAYER_DRAW_WIDTH_BASE,
+  PLAYER_GRAVITY,
+  PLAYER_JUMP_VELOCITY,
+  PLAYER_PERSPECTIVE_FAR_SCALE,
+  PLAYER_SPAWN_ARMOR_DURATION,
+  PLAYER_WALK_MAX_Y,
+  PLAYER_WALK_MIN_Y,
+  RABBIT_DEATH_ANIMATION_DURATION_MS,
+  SESSION_JOURNAL_MAX_ENTRIES,
+  SESSION_JOURNAL_STORAGE_KEY,
+  SETTINGS_STORAGE_KEY,
+  SOUNDTRACK_STEP_SECONDS,
+  STORY_TYPE_INTERVAL_MS
+} from './game-constants.js';
+import {
+  DIFFICULTY_PROFILES,
+  DIFFICULTY_SEQUENCE,
+  FINAL_MESSAGE_THEME_BASS,
+  FINAL_MESSAGE_THEME_MELODY,
+  GAME_OVER_KOANS,
+  getContemplativePolishProfile,
+  KOAN_CHAPTER_TAGS,
+  RESPAWN_REFLECTIONS,
+  SOUNDTRACK_BASS,
+  SOUNDTRACK_MELODY,
+  STORY_INTRO_LINES,
+  WIN_AFFIRMATIONS,
+  WIN_CHAPTER_TAGS
+} from './game-content.js';
+import { state } from './game-state.js';
 
 let gpu = null;
-let storyTypeTimer = null;
-let storyFullText = '';
-let storyTypedChars = 0;
-let titleCountdownTimer = null;
-let titleCountdownValue = 0;
-let rabbitDeathTimer = null;
-let respawnCountdownTimer = null;
-let respawnCountdownValue = 0;
-let gameOverKoanTypeTimer = null;
-let gameOverKoanHoldTimer = null;
-let gameOverKoanRevealTimer = null;
-let respawnReflectionTypeTimer = null;
-let respawnReflectionHoldTimer = null;
-let respawnReflectionRevealTimer = null;
-let winAffirmationTypeTimer = null;
-let winAffirmationHoldTimer = null;
-let winAffirmationRevealTimer = null;
-let contemplativePulseTimer = null;
-let contemplativeDroneDuckTimer = null;
 const contemplativeQuotePools = {
   respawn: [],
   gameOver: [],
@@ -290,21 +100,113 @@ const contemplativeQuotePools = {
   win: [],
   winChapter: []
 };
-const audio = {
-  context: null,
-  soundtrackTimer: null,
-  soundtrackStep: 0,
-  soundtrackActive: false,
-  finalThemeTimer: null,
-  finalThemeStep: 0,
-  finalThemeActive: false,
-  contemplativeActive: false,
-  droneOsc: null,
-  droneGain: null,
-  droneLfo: null,
-  droneLfoGain: null,
-  unlocked: false
-};
+const phaseMachine = createGamePhaseMachine({
+  initialPhase: state.gamePhase,
+  onInvalidTransition: ({ from, to }) => {
+    console.warn(`[phase-machine] blocked transition ${from} -> ${to}`);
+  }
+});
+
+const uiSystem = createUiSystem({
+  state,
+  elements: {
+    scoreEl,
+    highScoreEl,
+    livesEl,
+    timeEl,
+    statusEl,
+    stageWrapEl,
+    gamePageEl,
+    touchControlsEl,
+    musicToggleEl,
+    difficultyToggleEl,
+    fullscreenToggleEl,
+    journalListEl
+  },
+  GAME_WIDTH,
+  GAME_HEIGHT,
+  DIFFICULTY_PROFILES,
+  SESSION_JOURNAL_MAX_ENTRIES,
+  SETTINGS_STORAGE_KEY,
+  SESSION_JOURNAL_STORAGE_KEY
+});
+
+const audioSystem = createAudioSystem({
+  state,
+  getContemplativePolishProfile,
+  SOUNDTRACK_MELODY,
+  SOUNDTRACK_BASS,
+  SOUNDTRACK_STEP_SECONDS,
+  FINAL_MESSAGE_THEME_MELODY,
+  FINAL_MESSAGE_THEME_BASS,
+  FINAL_MESSAGE_THEME_STEP_SECONDS
+});
+
+const flowController = createGameFlowController({
+  state,
+  elements: {
+    gameOverlayEl,
+    overlayTitleEl,
+    overlayMessageEl,
+    overlayButtonEl
+  },
+  STORY_INTRO_LINES,
+  STORY_TYPE_INTERVAL_MS,
+  WIN_CHAPTER_TAGS,
+  WIN_AFFIRMATIONS,
+  GAME_OVER_KOANS,
+  KOAN_CHAPTER_TAGS,
+  RESPAWN_REFLECTIONS,
+  callbacks: {
+    setGamePhase,
+    showOverlay,
+    hideOverlay,
+    setStatus,
+    setContemplativeMode,
+    setFinalMessageThemeActive,
+    setSoundtrackActive,
+    setContemplativeTypeCursorActive,
+    appendSessionJournalEntry: (chapter, koan, score, outcome = 'loss') => {
+      uiSystem.appendSessionJournalEntry(chapter, koan, score, outcome);
+    },
+    drawWithoutImmediateRepeat,
+    getContemplativePolishProfile,
+    onTitleCountdownComplete: () => resetGame()
+  }
+});
+
+const effectsController = createGameEffectsController({
+  state,
+  elements: {
+    canvas,
+    fxLayerEl
+  },
+  constants: {
+    GAME_WIDTH,
+    GAME_HEIGHT,
+    CARROT_COLLECT_EFFECT_TTL,
+    ENEMY_KILL_EFFECT_TTL,
+    RABBIT_DEATH_ANIMATION_DURATION_MS,
+    PLAYER_SPAWN_ARMOR_DURATION
+  },
+  callbacks: {
+    clamp,
+    clearRespawnCountdown,
+    clearRespawnReflectionSequence,
+    clearWinAffirmationSequence,
+    setContemplativeMode,
+    setFinalMessageThemeActive,
+    setSoundtrackActive,
+    setStatus,
+    finishGame,
+    beginRespawnCountdown
+  }
+});
+
+function setGamePhase(nextPhase) {
+  state.gamePhase = phaseMachine.transition(nextPhase);
+  return state.gamePhase;
+}
 
 function shuffleArray(values) {
   for (let index = values.length - 1; index > 0; index -= 1) {
@@ -339,193 +241,19 @@ function setContemplativeTypeCursorActive(isActive) {
 }
 
 function updateHud() {
-  scoreEl.textContent = String(state.score);
-  if (highScoreEl) {
-    highScoreEl.textContent = String(state.highScore);
-  }
-  livesEl.textContent = String(state.lives);
-  timeEl.textContent = String(state.timeLeft);
+  uiSystem.updateHud();
 }
 
 function fitStageToViewport() {
-  if (!stageWrapEl || !gamePageEl) {
-    return;
-  }
-
-  const aspect = GAME_WIDTH / GAME_HEIGHT;
-  const pageStyle = window.getComputedStyle(gamePageEl);
-  const pagePaddingTop = parseFloat(pageStyle.paddingTop) || 0;
-  const pagePaddingBottom = parseFloat(pageStyle.paddingBottom) || 0;
-
-  let controlsHeight = 0;
-  if (touchControlsEl) {
-    const controlsStyle = window.getComputedStyle(touchControlsEl);
-    if (controlsStyle.display !== 'none') {
-      controlsHeight = touchControlsEl.offsetHeight + 12;
-    }
-  }
-
-  const horizontalMargin = 16;
-  const verticalMargin = 14;
-  const availableWidth = Math.max(280, window.innerWidth - horizontalMargin * 2 - pagePaddingTop);
-  const availableHeight = Math.max(180, window.innerHeight - verticalMargin * 2 - pagePaddingTop - pagePaddingBottom - controlsHeight);
-
-  let targetWidth = availableWidth;
-  let targetHeight = targetWidth / aspect;
-
-  if (targetHeight > availableHeight) {
-    targetHeight = availableHeight;
-    targetWidth = targetHeight * aspect;
-  }
-
-  stageWrapEl.style.width = `${Math.floor(targetWidth)}px`;
-  stageWrapEl.style.height = `${Math.floor(targetHeight)}px`;
+  uiSystem.fitStageToViewport();
 }
 
 function updateSettingsUI() {
-  if (musicToggleEl) {
-    musicToggleEl.textContent = `Music: ${state.settings.musicEnabled ? 'ON' : 'OFF'} (M)`;
-    musicToggleEl.classList.toggle('off', !state.settings.musicEnabled);
-  }
-
-  if (difficultyToggleEl) {
-    const profile = DIFFICULTY_PROFILES[state.settings.difficulty] ?? DIFFICULTY_PROFILES.normal;
-    difficultyToggleEl.textContent = `Difficulty: ${profile.label}`;
-  }
-
-  if (fullscreenToggleEl) {
-    const isFullscreen = Boolean(document.fullscreenElement);
-    fullscreenToggleEl.textContent = `Fullscreen: ${isFullscreen ? 'ON' : 'OFF'}`;
-  }
-}
-
-async function toggleFullscreen() {
-  try {
-    if (!document.fullscreenElement) {
-      if (stageWrapEl && stageWrapEl.requestFullscreen) {
-        await stageWrapEl.requestFullscreen();
-      }
-    } else if (document.exitFullscreen) {
-      await document.exitFullscreen();
-    }
-  } catch (error) {
-    console.warn('Fullscreen toggle failed:', error);
-  }
-
-  fitStageToViewport();
-  updateSettingsUI();
+  uiSystem.updateSettingsUI();
 }
 
 function saveSettings() {
-  try {
-    window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state.settings));
-  } catch {
-    return;
-  }
-}
-
-function loadSettings() {
-  try {
-    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) {
-      updateSettingsUI();
-      return;
-    }
-
-    const parsed = JSON.parse(raw);
-    if (typeof parsed.musicEnabled === 'boolean') {
-      state.settings.musicEnabled = parsed.musicEnabled;
-    }
-    if (typeof parsed.difficulty === 'string' && DIFFICULTY_PROFILES[parsed.difficulty]) {
-      state.settings.difficulty = parsed.difficulty;
-    }
-  } catch {
-    // no-op: keep defaults
-  }
-
-  updateSettingsUI();
-}
-
-function saveSessionJournal() {
-  try {
-    window.sessionStorage.setItem(SESSION_JOURNAL_STORAGE_KEY, JSON.stringify(state.sessionJournal));
-  } catch {
-    return;
-  }
-}
-
-function loadSessionJournal() {
-  try {
-    const raw = window.sessionStorage.getItem(SESSION_JOURNAL_STORAGE_KEY);
-    if (!raw) {
-      state.sessionJournal = [];
-      return;
-    }
-
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      state.sessionJournal = parsed
-        .filter((entry) => entry && entry.chapter && entry.koan)
-        .map((entry) => ({
-          chapter: entry.chapter,
-          koan: entry.koan,
-          score: entry.score,
-          outcome: entry.outcome === 'win' ? 'win' : 'loss'
-        }))
-        .slice(0, SESSION_JOURNAL_MAX_ENTRIES);
-    } else {
-      state.sessionJournal = [];
-    }
-  } catch {
-    state.sessionJournal = [];
-  }
-}
-
-function renderSessionJournal() {
-  if (!journalListEl) {
-    return;
-  }
-
-  journalListEl.replaceChildren();
-  if (state.sessionJournal.length === 0) {
-    const emptyItem = document.createElement('li');
-    emptyItem.textContent = 'No entries yet. Survive, fall, and reflect.';
-    journalListEl.appendChild(emptyItem);
-    return;
-  }
-
-  for (const entry of state.sessionJournal) {
-    const item = document.createElement('li');
-    const meta = document.createElement('span');
-    const outcomeLabel = entry.outcome === 'win' ? 'Win' : 'Fall';
-    meta.textContent = `${outcomeLabel} • ${entry.chapter} • Score ${entry.score}`;
-    const text = document.createElement('div');
-    text.textContent = entry.koan;
-    item.append(meta, text);
-    journalListEl.appendChild(item);
-  }
-}
-
-function appendSessionJournalEntry(chapter, koan, score, outcome = 'loss') {
-  state.sessionJournal.unshift({
-    chapter,
-    koan,
-    score,
-    outcome
-  });
-
-  if (state.sessionJournal.length > SESSION_JOURNAL_MAX_ENTRIES) {
-    state.sessionJournal.length = SESSION_JOURNAL_MAX_ENTRIES;
-  }
-
-  saveSessionJournal();
-  renderSessionJournal();
-}
-
-function clearSessionJournal() {
-  state.sessionJournal = [];
-  saveSessionJournal();
-  renderSessionJournal();
+  uiSystem.saveSettings();
 }
 
 function getDifficultyProfile() {
@@ -540,9 +268,9 @@ function setMusicEnabled(enabled) {
     stopFinalMessageTheme();
   } else if (state.running && !state.paused) {
     setSoundtrackActive(true);
-  } else if (audio.finalThemeActive && audio.unlocked) {
+  } else if (audioSystem.isFinalThemeActive() && audioSystem.isUnlocked()) {
     startFinalMessageTheme();
-  } else if (audio.contemplativeActive && audio.unlocked) {
+  } else if (audioSystem.isContemplativeActive() && audioSystem.isUnlocked()) {
     startContemplativeDrone();
   }
 
@@ -563,7 +291,7 @@ function cycleDifficulty() {
 }
 
 function setStatus(message) {
-  statusEl.textContent = message;
+  uiSystem.setStatus(message);
 }
 
 function showOverlay(title, message, buttonLabel) {
@@ -595,459 +323,39 @@ function hideOverlay() {
 }
 
 function clearStoryTypewriter() {
-  if (storyTypeTimer !== null) {
-    window.clearInterval(storyTypeTimer);
-    storyTypeTimer = null;
-  }
+  flowController.clearStoryTypewriter();
 }
 
 function clearTitleCountdown() {
-  if (titleCountdownTimer !== null) {
-    window.clearInterval(titleCountdownTimer);
-    titleCountdownTimer = null;
-  }
-  titleCountdownValue = 0;
+  flowController.clearTitleCountdown();
 }
 
 function clearRespawnCountdown() {
-  if (respawnCountdownTimer !== null) {
-    window.clearInterval(respawnCountdownTimer);
-    respawnCountdownTimer = null;
-  }
-  respawnCountdownValue = 0;
+  flowController.clearRespawnCountdown();
 }
 
 function clearRespawnReflectionSequence() {
-  if (respawnReflectionTypeTimer !== null) {
-    window.clearInterval(respawnReflectionTypeTimer);
-    respawnReflectionTypeTimer = null;
-  }
-  if (respawnReflectionHoldTimer !== null) {
-    window.clearTimeout(respawnReflectionHoldTimer);
-    respawnReflectionHoldTimer = null;
-  }
-  if (respawnReflectionRevealTimer !== null) {
-    window.clearTimeout(respawnReflectionRevealTimer);
-    respawnReflectionRevealTimer = null;
-  }
-  setContemplativeTypeCursorActive(false);
+  flowController.clearRespawnReflectionSequence();
 }
 
 function clearWinAffirmationSequence() {
-  if (winAffirmationTypeTimer !== null) {
-    window.clearInterval(winAffirmationTypeTimer);
-    winAffirmationTypeTimer = null;
-  }
-  if (winAffirmationHoldTimer !== null) {
-    window.clearTimeout(winAffirmationHoldTimer);
-    winAffirmationHoldTimer = null;
-  }
-  if (winAffirmationRevealTimer !== null) {
-    window.clearTimeout(winAffirmationRevealTimer);
-    winAffirmationRevealTimer = null;
-  }
-  setContemplativeTypeCursorActive(false);
-}
-
-function pulseExistentialVignette() {
-  if (!gameOverlayEl || !gameOverlayEl.classList.contains('existential-koan')) {
-    return;
-  }
-
-  const profile = getContemplativePolishProfile();
-  gameOverlayEl.style.setProperty('--existential-pulse-ms', `${profile.contemplativePulseDurationMs}ms`);
-
-  gameOverlayEl.classList.remove('existential-pulse');
-  void gameOverlayEl.offsetWidth;
-  gameOverlayEl.classList.add('existential-pulse');
-
-  if (contemplativePulseTimer !== null) {
-    window.clearTimeout(contemplativePulseTimer);
-  }
-  contemplativePulseTimer = window.setTimeout(() => {
-    contemplativePulseTimer = null;
-    if (gameOverlayEl) {
-      gameOverlayEl.classList.remove('existential-pulse');
-    }
-  }, profile.contemplativePulseDurationMs);
+  flowController.clearWinAffirmationSequence();
 }
 
 function clearGameOverKoanSequence() {
-  if (gameOverKoanTypeTimer !== null) {
-    window.clearInterval(gameOverKoanTypeTimer);
-    gameOverKoanTypeTimer = null;
-  }
-  if (gameOverKoanHoldTimer !== null) {
-    window.clearTimeout(gameOverKoanHoldTimer);
-    gameOverKoanHoldTimer = null;
-  }
-  if (gameOverKoanRevealTimer !== null) {
-    window.clearTimeout(gameOverKoanRevealTimer);
-    gameOverKoanRevealTimer = null;
-  }
-
-  if (contemplativePulseTimer !== null) {
-    window.clearTimeout(contemplativePulseTimer);
-    contemplativePulseTimer = null;
-  }
-
-  if (overlayTitleEl) {
-    overlayTitleEl.style.opacity = '';
-    overlayTitleEl.style.transition = '';
-  }
-  if (overlayMessageEl) {
-    overlayMessageEl.style.opacity = '';
-    overlayMessageEl.style.transition = '';
-  }
-  if (gameOverlayEl) {
-    gameOverlayEl.classList.remove('existential-koan');
-    gameOverlayEl.classList.remove('existential-pulse');
-  }
-  setContemplativeTypeCursorActive(false);
-}
-
-function updateTitleCountdownMessage() {
-  if (!overlayMessageEl || state.gamePhase !== 'title') {
-    return;
-  }
-
-  overlayMessageEl.textContent = `Collect carrots and avoid wolves. ${titleCountdownValue}`;
-}
-
-function beginTitleCountdown() {
-  clearTitleCountdown();
-  titleCountdownValue = 3;
-  updateTitleCountdownMessage();
-
-  titleCountdownTimer = window.setInterval(() => {
-    if (state.gamePhase !== 'title') {
-      clearTitleCountdown();
-      return;
-    }
-
-    titleCountdownValue -= 1;
-    if (titleCountdownValue <= 0) {
-      clearTitleCountdown();
-      resetGame();
-      return;
-    }
-
-    updateTitleCountdownMessage();
-  }, 1000);
-}
-
-function completeStoryTyping() {
-  clearStoryTypewriter();
-  storyTypedChars = storyFullText.length;
-  if (overlayMessageEl) {
-    overlayMessageEl.textContent = `${storyFullText}\n\n> press enter to continue`;
-  }
-  if (overlayButtonEl) {
-    overlayButtonEl.textContent = 'Continue';
-    overlayButtonEl.style.display = 'inline-block';
-  }
+  flowController.clearGameOverKoanSequence();
 }
 
 function advanceStoryIntro() {
-  if (state.gamePhase !== 'story') {
-    return;
-  }
-
-  if (storyTypedChars < storyFullText.length) {
-    completeStoryTyping();
-    return;
-  }
-
-  clearStoryTypewriter();
-  showTitleScreen();
+  flowController.advanceStoryIntro();
 }
 
 function showStoryIntro() {
-  clearGameOverKoanSequence();
-  clearRespawnReflectionSequence();
-  clearWinAffirmationSequence();
-  setContemplativeMode(false);
-  setFinalMessageThemeActive(false);
-  clearRespawnCountdown();
-  clearTitleCountdown();
-  state.gamePhase = 'story';
-  state.running = false;
-  state.paused = false;
-  setSoundtrackActive(false);
-
-  showOverlay('boot@thought-assassin:~$', '', 'Continue');
-  if (gameOverlayEl) {
-    gameOverlayEl.classList.add('terminal-overlay');
-    gameOverlayEl.scrollTop = 0;
-  }
-  if (overlayButtonEl) {
-    overlayButtonEl.style.display = 'none';
-  }
-
-  storyFullText = STORY_INTRO_LINES.join('\n');
-  storyTypedChars = 0;
-  if (overlayMessageEl) {
-    overlayMessageEl.textContent = '';
-  }
-
-  clearStoryTypewriter();
-  storyTypeTimer = window.setInterval(() => {
-    if (state.gamePhase !== 'story') {
-      clearStoryTypewriter();
-      return;
-    }
-
-    storyTypedChars = Math.min(storyTypedChars + 1, storyFullText.length);
-    if (overlayMessageEl) {
-      overlayMessageEl.textContent = storyFullText.slice(0, storyTypedChars);
-    }
-
-    if (storyTypedChars >= storyFullText.length) {
-      completeStoryTyping();
-    }
-  }, STORY_TYPE_INTERVAL_MS);
-
-  setStatus('Initializing narrative feed...');
-}
-
-function showTitleScreen() {
-  clearGameOverKoanSequence();
-  clearRespawnReflectionSequence();
-  clearWinAffirmationSequence();
-  setContemplativeMode(false);
-  setFinalMessageThemeActive(false);
-  clearRespawnCountdown();
-  clearStoryTypewriter();
-  clearTitleCountdown();
-  state.gamePhase = 'title';
-  state.running = false;
-  state.paused = false;
-  setSoundtrackActive(false);
-  if (overlayButtonEl) {
-    overlayButtonEl.style.display = 'none';
-  }
-  showOverlay('Thought Assassin', '', 'Start Game');
-  beginTitleCountdown();
-  setStatus('Get ready...');
-}
-
-function revealLoseOverlayDetails(finalMessage) {
-  if (!overlayMessageEl || !overlayButtonEl) {
-    state.gamePhase = 'lose';
-    return;
-  }
-
-  overlayMessageEl.textContent = finalMessage;
-  overlayMessageEl.style.opacity = '1';
-  if (gameOverlayEl) {
-    gameOverlayEl.classList.remove('existential-koan');
-    gameOverlayEl.classList.remove('existential-pulse');
-  }
-  setContemplativeMode(false);
-  setFinalMessageThemeActive(true);
-  state.gamePhase = 'lose';
-  overlayButtonEl.style.display = 'inline-block';
+  flowController.showStoryIntro();
 }
 
 function finishGame(reason) {
-  clearGameOverKoanSequence();
-  clearRespawnReflectionSequence();
-  clearWinAffirmationSequence();
-  clearRespawnCountdown();
-  clearTitleCountdown();
-  setContemplativeMode(false);
-  setFinalMessageThemeActive(false);
-  state.running = false;
-  state.paused = false;
-  setSoundtrackActive(false);
-  if (reason === 'win') {
-    const profile = getContemplativePolishProfile();
-    const winChapterTag = drawWithoutImmediateRepeat(WIN_CHAPTER_TAGS, 'winChapter');
-    const affirmation = drawWithoutImmediateRepeat(WIN_AFFIRMATIONS, 'win');
-    const winMessage = `You survived with ${state.score} points.`;
-    appendSessionJournalEntry(winChapterTag, affirmation, state.score, 'win');
-    state.gamePhase = 'win-affirmation';
-    showOverlay('You Win!', '', 'Play Again');
-    if (gameOverlayEl) {
-      gameOverlayEl.classList.add('existential-koan');
-    }
-
-    if (!overlayTitleEl || !overlayMessageEl || !overlayButtonEl) {
-      state.gamePhase = 'win';
-      showOverlay('You Win!', winMessage, 'Play Again');
-      if (overlayButtonEl) {
-        overlayButtonEl.style.display = 'inline-block';
-      }
-      return;
-    }
-
-    overlayButtonEl.style.display = 'none';
-    overlayTitleEl.style.opacity = '0';
-    overlayMessageEl.textContent = '';
-    overlayMessageEl.style.opacity = '1';
-
-    let typedChars = 0;
-    setContemplativeTypeCursorActive(true);
-    winAffirmationTypeTimer = window.setInterval(() => {
-      if (state.gamePhase !== 'win-affirmation') {
-        clearWinAffirmationSequence();
-        return;
-      }
-
-      typedChars = Math.min(typedChars + 1, affirmation.length);
-      overlayMessageEl.textContent = `${winChapterTag}\n${affirmation.slice(0, typedChars)}`;
-      pulseExistentialVignette();
-
-      if (typedChars >= affirmation.length) {
-        setContemplativeTypeCursorActive(false);
-        window.clearInterval(winAffirmationTypeTimer);
-        winAffirmationTypeTimer = null;
-
-        winAffirmationHoldTimer = window.setTimeout(() => {
-          if (state.gamePhase !== 'win-affirmation') {
-            clearWinAffirmationSequence();
-            return;
-          }
-
-          overlayTitleEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
-          overlayMessageEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
-          overlayTitleEl.style.opacity = '1';
-          overlayMessageEl.style.opacity = '0';
-
-          winAffirmationRevealTimer = window.setTimeout(() => {
-            if (state.gamePhase !== 'win-affirmation') {
-              clearWinAffirmationSequence();
-              return;
-            }
-
-            overlayMessageEl.textContent = winMessage;
-            overlayMessageEl.style.opacity = '0';
-            if (gameOverlayEl) {
-              gameOverlayEl.classList.remove('existential-koan');
-            }
-            setContemplativeMode(false);
-            requestAnimationFrame(() => {
-              if (state.gamePhase !== 'win-affirmation') {
-                return;
-              }
-              overlayMessageEl.style.opacity = '1';
-            });
-
-            winAffirmationRevealTimer = window.setTimeout(() => {
-              if (state.gamePhase !== 'win-affirmation') {
-                clearWinAffirmationSequence();
-                return;
-              }
-
-              state.gamePhase = 'win';
-              overlayButtonEl.style.display = 'inline-block';
-              clearWinAffirmationSequence();
-            }, profile.respawnReflectionFadeDurationMs + 40);
-          }, profile.respawnReflectionFadeDurationMs + 40);
-        }, profile.gameOverKoanReadHoldMs * 0.5);
-      }
-    }, profile.respawnReflectionTypeIntervalMs);
-
-    return;
-  }
-
-  const koan = drawWithoutImmediateRepeat(GAME_OVER_KOANS, 'gameOver');
-  const chapterTag = drawWithoutImmediateRepeat(KOAN_CHAPTER_TAGS, 'chapter');
-  const profile = getContemplativePolishProfile();
-  const finalMessage = `Final score: ${state.score}. Wolves were too much this run.`;
-  appendSessionJournalEntry(chapterTag, koan, state.score);
-  state.gamePhase = 'lose-koan';
-  showOverlay('Game Over', '', 'Play Again');
-  if (gameOverlayEl) {
-    gameOverlayEl.classList.add('existential-koan');
-  }
-  setContemplativeMode(true);
-  setFinalMessageThemeActive(true);
-
-  if (!overlayTitleEl || !overlayMessageEl || !overlayButtonEl) {
-    state.gamePhase = 'lose';
-    showOverlay('Game Over', `${finalMessage} ${koan}`, 'Play Again');
-    if (overlayButtonEl) {
-      overlayButtonEl.style.display = 'inline-block';
-    }
-    return;
-  }
-
-  overlayButtonEl.style.display = 'none';
-  overlayTitleEl.style.opacity = '0';
-  overlayMessageEl.textContent = '';
-  overlayMessageEl.style.opacity = '1';
-
-  let typedChars = 0;
-  setContemplativeTypeCursorActive(true);
-  gameOverKoanTypeTimer = window.setInterval(() => {
-    if (state.gamePhase !== 'lose-koan') {
-      clearGameOverKoanSequence();
-      return;
-    }
-
-    typedChars = Math.min(typedChars + 1, koan.length);
-    overlayMessageEl.textContent = `${chapterTag}\n${koan.slice(0, typedChars)}`;
-    pulseExistentialVignette();
-
-    if (typedChars >= koan.length) {
-      setContemplativeTypeCursorActive(false);
-      window.clearInterval(gameOverKoanTypeTimer);
-      gameOverKoanTypeTimer = null;
-
-      gameOverKoanHoldTimer = window.setTimeout(() => {
-        if (state.gamePhase !== 'lose-koan') {
-          clearGameOverKoanSequence();
-          return;
-        }
-        try {
-          setFinalMessageThemeActive(true);
-          overlayTitleEl.style.transition = `opacity ${profile.gameOverFadeDurationMs}ms ease`;
-          overlayMessageEl.style.transition = `opacity ${profile.gameOverFadeDurationMs}ms ease`;
-          overlayTitleEl.style.opacity = '1';
-          overlayMessageEl.style.opacity = '0';
-
-          gameOverKoanRevealTimer = window.setTimeout(() => {
-            if (state.gamePhase !== 'lose-koan') {
-              clearGameOverKoanSequence();
-              return;
-            }
-
-            try {
-              setFinalMessageThemeActive(true);
-              overlayMessageEl.textContent = finalMessage;
-              overlayMessageEl.style.opacity = '0';
-              if (gameOverlayEl) {
-                gameOverlayEl.classList.remove('existential-koan');
-              }
-              setContemplativeMode(false);
-              requestAnimationFrame(() => {
-                if (state.gamePhase !== 'lose-koan') {
-                  return;
-                }
-                overlayMessageEl.style.opacity = '1';
-              });
-
-              gameOverKoanRevealTimer = window.setTimeout(() => {
-                if (state.gamePhase !== 'lose-koan') {
-                  clearGameOverKoanSequence();
-                  return;
-                }
-                revealLoseOverlayDetails(finalMessage);
-                clearGameOverKoanSequence();
-              }, profile.gameOverFadeDurationMs + 40);
-            } catch {
-              revealLoseOverlayDetails(finalMessage);
-              clearGameOverKoanSequence();
-            }
-          }, profile.gameOverFadeDurationMs + 40);
-        } catch {
-          revealLoseOverlayDetails(finalMessage);
-          clearGameOverKoanSequence();
-        }
-      }, profile.gameOverKoanReadHoldMs);
-    }
-  }, profile.gameOverKoanTypeIntervalMs);
+  flowController.finishGame(reason);
 }
 
 function getDifficultyMultiplier() {
@@ -1057,609 +365,80 @@ function getDifficultyMultiplier() {
 }
 
 
-function ensureAudioContext() {
-  if (!audio.unlocked) {
-    return null;
-  }
-
-  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextCtor) {
-    return null;
-  }
-
-  if (!audio.context) {
-    audio.context = new AudioContextCtor();
-  }
-
-  if (audio.context.state === 'suspended') {
-    audio.context.resume().catch(() => {});
-  }
-
-  return audio.context;
-}
-
 function stopContemplativeDrone() {
-  if (contemplativeDroneDuckTimer !== null) {
-    window.clearTimeout(contemplativeDroneDuckTimer);
-    contemplativeDroneDuckTimer = null;
-  }
-
-  if (audio.droneOsc) {
-    audio.droneOsc.stop();
-    audio.droneOsc.disconnect();
-    audio.droneOsc = null;
-  }
-  if (audio.droneLfo) {
-    audio.droneLfo.stop();
-    audio.droneLfo.disconnect();
-    audio.droneLfo = null;
-  }
-  if (audio.droneLfoGain) {
-    audio.droneLfoGain.disconnect();
-    audio.droneLfoGain = null;
-  }
-  if (audio.droneGain) {
-    audio.droneGain.disconnect();
-    audio.droneGain = null;
-  }
-}
-
-function duckContemplativeDroneForFinalTheme() {
-  if (!audio.droneGain || !audio.context) {
-    return;
-  }
-
-  const now = audio.context.currentTime;
-  try {
-    audio.droneGain.gain.cancelScheduledValues(now);
-    audio.droneGain.gain.setValueAtTime(Math.max(0.0001, audio.droneGain.gain.value), now);
-    audio.droneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
-  } catch {
-    stopContemplativeDrone();
-    return;
-  }
-
-  if (contemplativeDroneDuckTimer !== null) {
-    window.clearTimeout(contemplativeDroneDuckTimer);
-  }
-  contemplativeDroneDuckTimer = window.setTimeout(() => {
-    contemplativeDroneDuckTimer = null;
-    if (audio.contemplativeActive) {
-      stopContemplativeDrone();
-    }
-  }, 460);
+  audioSystem.stopContemplativeDrone();
 }
 
 function startContemplativeDrone() {
-  if (audio.droneOsc || !state.settings.musicEnabled) {
-    return;
-  }
-
-  const context = ensureAudioContext();
-  if (!context) {
-    return;
-  }
-
-  const profile = getContemplativePolishProfile();
-  const now = context.currentTime;
-  const droneGain = context.createGain();
-  droneGain.gain.setValueAtTime(0.0001, now);
-  droneGain.gain.exponentialRampToValueAtTime(profile.droneGain, now + profile.droneAttackSeconds);
-
-  const droneOsc = context.createOscillator();
-  droneOsc.type = 'triangle';
-  droneOsc.frequency.setValueAtTime(58, now);
-
-  const lfo = context.createOscillator();
-  lfo.type = 'sine';
-  lfo.frequency.setValueAtTime(profile.droneLfoRate, now);
-  const lfoGain = context.createGain();
-  lfoGain.gain.setValueAtTime(profile.droneLfoDepth, now);
-
-  lfo.connect(lfoGain);
-  lfoGain.connect(droneGain.gain);
-  droneOsc.connect(droneGain);
-  droneGain.connect(context.destination);
-
-  droneOsc.start(now);
-  lfo.start(now);
-
-  audio.droneOsc = droneOsc;
-  audio.droneGain = droneGain;
-  audio.droneLfo = lfo;
-  audio.droneLfoGain = lfoGain;
+  audioSystem.startContemplativeDrone();
 }
 
 function setContemplativeMode(isActive) {
-  audio.contemplativeActive = isActive;
-  if (isActive && state.settings.musicEnabled && audio.unlocked) {
-    startContemplativeDrone();
-  } else {
-    stopContemplativeDrone();
-  }
-}
-
-function tickFinalMessageTheme() {
-  if (!audio.finalThemeActive) {
-    return;
-  }
-
-  const context = ensureAudioContext();
-  if (!context) {
-    return;
-  }
-
-  const profile = getContemplativePolishProfile();
-  const stepIndex = audio.finalThemeStep % FINAL_MESSAGE_THEME_MELODY.length;
-  const melodyNote = FINAL_MESSAGE_THEME_MELODY[stepIndex];
-  const bassNote = FINAL_MESSAGE_THEME_BASS[stepIndex];
-  const now = context.currentTime;
-
-  if (melodyNote) {
-    playToneAt(context, now, {
-      frequency: melodyNote,
-      duration: FINAL_MESSAGE_THEME_STEP_SECONDS * 0.96,
-      type: 'triangle',
-      gain: profile.droneGain * 1.05
-    });
-  }
-
-  if (bassNote) {
-    playToneAt(context, now, {
-      frequency: bassNote,
-      duration: FINAL_MESSAGE_THEME_STEP_SECONDS,
-      type: 'sine',
-      gain: profile.droneGain * 0.75
-    });
-  }
-
-  audio.finalThemeStep += 1;
+  audioSystem.setContemplativeMode(isActive);
 }
 
 function startFinalMessageTheme() {
-  if (audio.finalThemeTimer || !state.settings.musicEnabled) {
-    return;
-  }
-
-  if (!ensureAudioContext()) {
-    return;
-  }
-
-  duckContemplativeDroneForFinalTheme();
-
-  audio.finalThemeStep = 0;
-  tickFinalMessageTheme();
-  audio.finalThemeTimer = window.setInterval(tickFinalMessageTheme, FINAL_MESSAGE_THEME_STEP_SECONDS * 1000);
+  audioSystem.startFinalMessageTheme();
 }
 
 function stopFinalMessageTheme() {
-  if (!audio.finalThemeTimer) {
-    return;
-  }
-
-  window.clearInterval(audio.finalThemeTimer);
-  audio.finalThemeTimer = null;
+  audioSystem.stopFinalMessageTheme();
 }
 
 function setFinalMessageThemeActive(isActive) {
-  audio.finalThemeActive = isActive;
-  if (isActive && state.settings.musicEnabled && audio.unlocked) {
-    startFinalMessageTheme();
-  } else {
-    stopFinalMessageTheme();
-  }
+  audioSystem.setFinalMessageThemeActive(isActive);
 }
 
 function unlockAudioFromGesture() {
-  if (audio.unlocked) {
-    ensureAudioContext();
-    return;
-  }
-
-  audio.unlocked = true;
-  ensureAudioContext();
-  if (audio.soundtrackActive) {
-    startSoundtrack();
-  }
-  if (audio.finalThemeActive) {
-    startFinalMessageTheme();
-  }
-  if (audio.contemplativeActive) {
-    startContemplativeDrone();
-  }
-}
-
-function playToneAt(context, startTime, { frequency = 440, duration = 0.08, type = 'square', gain = 0.08, endFrequency = null }) {
-  const osc = context.createOscillator();
-  const amp = context.createGain();
-  const endTime = startTime + duration;
-
-  osc.type = type;
-  osc.frequency.setValueAtTime(frequency, startTime);
-  if (endFrequency !== null) {
-    osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), endTime);
-  }
-
-  amp.gain.setValueAtTime(gain, startTime);
-  amp.gain.exponentialRampToValueAtTime(0.0001, endTime);
-
-  osc.connect(amp);
-  amp.connect(context.destination);
-  osc.start(startTime);
-  osc.stop(endTime);
-}
-
-function playTone({ frequency = 440, duration = 0.08, type = 'square', gain = 0.08, endFrequency = null }) {
-  if (!state.settings.musicEnabled) {
-    return;
-  }
-
-  const context = ensureAudioContext();
-  if (!context) {
-    return;
-  }
-
-  playToneAt(context, context.currentTime, { frequency, duration, type, gain, endFrequency });
-}
-
-function tickSoundtrack() {
-  if (!audio.soundtrackActive) {
-    return;
-  }
-
-  const context = ensureAudioContext();
-  if (!context) {
-    return;
-  }
-
-  const stepIndex = audio.soundtrackStep % SOUNDTRACK_MELODY.length;
-  const melodyNote = SOUNDTRACK_MELODY[stepIndex];
-  const bassNote = SOUNDTRACK_BASS[stepIndex];
-  const now = context.currentTime;
-
-  if (melodyNote) {
-    playToneAt(context, now, {
-      frequency: melodyNote,
-      duration: SOUNDTRACK_STEP_SECONDS * 0.9,
-      type: 'square',
-      gain: 0.032
-    });
-  }
-
-  if (bassNote) {
-    playToneAt(context, now, {
-      frequency: bassNote,
-      duration: SOUNDTRACK_STEP_SECONDS * 0.95,
-      type: 'triangle',
-      gain: 0.022
-    });
-  }
-
-  audio.soundtrackStep += 1;
-}
-
-function startSoundtrack() {
-  if (audio.soundtrackTimer) {
-    return;
-  }
-
-  audio.soundtrackStep = 0;
-  audio.soundtrackTimer = window.setInterval(tickSoundtrack, SOUNDTRACK_STEP_SECONDS * 1000);
-}
-
-function stopSoundtrack() {
-  if (!audio.soundtrackTimer) {
-    return;
-  }
-
-  window.clearInterval(audio.soundtrackTimer);
-  audio.soundtrackTimer = null;
+  audioSystem.unlockAudioFromGesture();
 }
 
 function setSoundtrackActive(isActive) {
-  audio.soundtrackActive = isActive;
-  if (isActive && state.settings.musicEnabled) {
-    if (audio.unlocked) {
-      startSoundtrack();
-    }
-  } else {
-    stopSoundtrack();
-  }
+  audioSystem.setSoundtrackActive(isActive);
 }
 
 function playJumpSfx() {
-  playTone({ frequency: 280, endFrequency: 510, duration: 0.1, type: 'square', gain: 0.055 });
+  audioSystem.playJumpSfx();
 }
 
 function playFireSfx() {
-  playTone({ frequency: 920, endFrequency: 510, duration: 0.045, type: 'square', gain: 0.055 });
-  playTone({ frequency: 1220, endFrequency: 680, duration: 0.035, type: 'square', gain: 0.03 });
+  audioSystem.playFireSfx();
 }
 
 function playHitSfx() {
-  playTone({ frequency: 210, endFrequency: 85, duration: 0.12, type: 'square', gain: 0.085 });
-  playTone({ frequency: 128, endFrequency: 64, duration: 0.14, type: 'triangle', gain: 0.05 });
+  audioSystem.playHitSfx();
 }
 
 function playCollectSfx() {
-  playTone({ frequency: 660, endFrequency: 988, duration: 0.07, type: 'square', gain: 0.06 });
-  playTone({ frequency: 880, endFrequency: 1244, duration: 0.08, type: 'square', gain: 0.05 });
-  playTone({ frequency: 1048, endFrequency: 1568, duration: 0.09, type: 'triangle', gain: 0.04 });
+  audioSystem.playCollectSfx();
 }
 
 function triggerScreenShake(duration, strength) {
-  state.screenShakeTime = Math.max(state.screenShakeTime, duration);
-  state.screenShakeStrength = Math.max(state.screenShakeStrength, strength);
+  effectsController.triggerScreenShake(duration, strength);
 }
 
 function spawnCollectEffect(x, y) {
-  state.collectEffects.push({
-    x,
-    y,
-    ttl: CARROT_COLLECT_EFFECT_TTL,
-    maxTtl: CARROT_COLLECT_EFFECT_TTL
-  });
+  effectsController.spawnCollectEffect(x, y);
 }
 
 function spawnEnemyKillEffect(x, y) {
-  state.enemyKillEffects.push({
-    x,
-    y,
-    ttl: ENEMY_KILL_EFFECT_TTL,
-    maxTtl: ENEMY_KILL_EFFECT_TTL
-  });
+  effectsController.spawnEnemyKillEffect(x, y);
 }
 
 function spawnScorePopup(x, y, scoreValue, kind = 'collect') {
-  if (!fxLayerEl) {
-    return;
-  }
-
-  const popup = document.createElement('div');
-  popup.className = 'collect-popup';
-  if (kind === 'enemy') {
-    popup.classList.add('enemy-popup');
-  }
-  popup.textContent = `+${scoreValue}`;
-
-  const rect = canvas.getBoundingClientRect();
-  const relativeX = (x / GAME_WIDTH) * rect.width;
-  const relativeY = (y / GAME_HEIGHT) * rect.height;
-
-  popup.style.left = `${relativeX}px`;
-  popup.style.top = `${relativeY}px`;
-  fxLayerEl.appendChild(popup);
-
-  window.setTimeout(() => {
-    popup.remove();
-  }, 760);
-}
-
-function mapWorldToFxLayer(x, y) {
-  const rect = canvas.getBoundingClientRect();
-  return {
-    x: (x / GAME_WIDTH) * rect.width,
-    y: (y / GAME_HEIGHT) * rect.height,
-    width: rect.width
-  };
+  effectsController.spawnScorePopup(x, y, scoreValue, kind);
 }
 
 function clearRabbitDeathAnimation() {
-  if (rabbitDeathTimer !== null) {
-    window.clearTimeout(rabbitDeathTimer);
-    rabbitDeathTimer = null;
-  }
-
-  clearRespawnCountdown();
-  clearRespawnReflectionSequence();
-  clearWinAffirmationSequence();
-  setContemplativeMode(false);
-  setFinalMessageThemeActive(false);
-
-  state.playerDeathEffectActive = false;
-  if (fxLayerEl) {
-    fxLayerEl.querySelectorAll('.rabbit-death-sequence').forEach((node) => node.remove());
-  }
-}
-
-function updateRespawnCountdownMessage(livesLeft) {
-  if (!overlayMessageEl || state.gamePhase !== 'respawn') {
-    return;
-  }
-
-  overlayMessageEl.textContent = `Lives left: ${livesLeft}. Respawning in ${respawnCountdownValue}`;
-}
-
-function getRespawnReflection() {
-  return drawWithoutImmediateRepeat(RESPAWN_REFLECTIONS, 'respawn');
+  effectsController.clearRabbitDeathAnimation();
 }
 
 function beginRespawnCountdown(livesLeft) {
-  clearRespawnCountdown();
-  clearRespawnReflectionSequence();
-  state.gamePhase = 'respawn-reflection';
-  showOverlay('', '', 'Continue');
-  if (gameOverlayEl) {
-    gameOverlayEl.classList.add('existential-koan');
-  }
-  setContemplativeMode(true);
-
-  const reflection = getRespawnReflection();
-  const profile = getContemplativePolishProfile();
-  if (overlayButtonEl) {
-    overlayButtonEl.style.display = 'none';
-  }
-  if (!overlayTitleEl || !overlayMessageEl) {
-    state.gamePhase = 'respawn';
-    respawnCountdownValue = 3;
-    updateRespawnCountdownMessage(livesLeft);
-    respawnCountdownTimer = window.setInterval(() => {
-      if (state.gamePhase !== 'respawn') {
-        clearRespawnCountdown();
-        return;
-      }
-
-      respawnCountdownValue -= 1;
-      if (respawnCountdownValue <= 0) {
-        clearRespawnCountdown();
-        hideOverlay();
-        state.gamePhase = 'playing';
-        state.running = true;
-        state.paused = false;
-        setContemplativeMode(false);
-        setSoundtrackActive(true);
-        setStatus('Collect targets and survive.');
-        return;
-      }
-
-      updateRespawnCountdownMessage(livesLeft);
-    }, 1000);
-    return;
-  }
-
-  if (overlayTitleEl) {
-    overlayTitleEl.textContent = 'Breathe. Return.';
-    overlayTitleEl.style.opacity = '0';
-  }
-  if (overlayMessageEl) {
-    overlayMessageEl.textContent = '';
-    overlayMessageEl.style.opacity = '1';
-  }
-
-  let typedChars = 0;
-  setContemplativeTypeCursorActive(true);
-  respawnReflectionTypeTimer = window.setInterval(() => {
-    if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
-      clearRespawnReflectionSequence();
-      return;
-    }
-
-    typedChars = Math.min(typedChars + 1, reflection.length);
-    overlayMessageEl.textContent = reflection.slice(0, typedChars);
-    pulseExistentialVignette();
-
-    if (typedChars >= reflection.length) {
-      setContemplativeTypeCursorActive(false);
-      window.clearInterval(respawnReflectionTypeTimer);
-      respawnReflectionTypeTimer = null;
-
-      respawnReflectionHoldTimer = window.setTimeout(() => {
-        if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
-          clearRespawnReflectionSequence();
-          return;
-        }
-
-        if (overlayTitleEl) {
-          overlayTitleEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
-          overlayTitleEl.style.opacity = '1';
-        }
-        overlayMessageEl.style.transition = `opacity ${profile.respawnReflectionFadeDurationMs}ms ease`;
-        overlayMessageEl.style.opacity = '0';
-
-        respawnReflectionRevealTimer = window.setTimeout(() => {
-          if (state.gamePhase !== 'respawn-reflection' || !overlayMessageEl) {
-            clearRespawnReflectionSequence();
-            return;
-          }
-
-          state.gamePhase = 'respawn';
-          respawnCountdownValue = 3;
-          updateRespawnCountdownMessage(livesLeft);
-          overlayMessageEl.style.opacity = '0';
-
-          requestAnimationFrame(() => {
-            if (state.gamePhase !== 'respawn') {
-              return;
-            }
-            overlayMessageEl.style.opacity = '1';
-          });
-
-          respawnCountdownTimer = window.setInterval(() => {
-            if (state.gamePhase !== 'respawn') {
-              clearRespawnCountdown();
-              return;
-            }
-
-            respawnCountdownValue -= 1;
-            if (respawnCountdownValue <= 0) {
-              clearRespawnCountdown();
-              clearRespawnReflectionSequence();
-              hideOverlay();
-              state.gamePhase = 'playing';
-              state.running = true;
-              state.paused = false;
-              setContemplativeMode(false);
-              setSoundtrackActive(true);
-              setStatus('Collect targets and survive.');
-              return;
-            }
-
-            updateRespawnCountdownMessage(livesLeft);
-          }, 1000);
-        }, profile.respawnReflectionFadeDurationMs + 60);
-      }, profile.respawnReflectionReadHoldMs);
-    }
-  }, profile.respawnReflectionTypeIntervalMs);
-}
-
-function spawnRabbitDeathAnimation(x, y, drawWidth) {
-  if (!fxLayerEl) {
-    return;
-  }
-
-  const mapped = mapWorldToFxLayer(x, y);
-  const sequence = document.createElement('div');
-  sequence.className = 'rabbit-death-sequence';
-  sequence.style.left = `${mapped.x}px`;
-  sequence.style.top = `${mapped.y}px`;
-  const scaledWidth = (drawWidth / GAME_WIDTH) * mapped.width;
-  sequence.style.setProperty('--rabbit-size', `${clamp(scaledWidth, 26, 74)}px`);
-  sequence.innerHTML = '<div class="rabbit-death-sprite" aria-hidden="true">🐇</div><div class="rabbit-death-poof" aria-hidden="true">💨</div><div class="rabbit-death-angel" aria-hidden="true">👼</div>';
-  fxLayerEl.appendChild(sequence);
-
-  window.setTimeout(() => {
-    sequence.remove();
-  }, RABBIT_DEATH_ANIMATION_DURATION_MS + 120);
+  flowController.beginRespawnCountdown(livesLeft);
 }
 
 function triggerRabbitDeathSequence(isFinalElimination = false) {
-  if (state.playerDeathEffectActive) {
-    return;
-  }
-
-  state.playerDeathEffectActive = true;
-  state.running = false;
-  state.paused = false;
-  state.keys.clear();
-  setSoundtrackActive(false);
-  spawnRabbitDeathAnimation(state.player.x, state.player.y, state.player.drawWidth);
-  setStatus('Rabbit down...');
-
-  rabbitDeathTimer = window.setTimeout(() => {
-    rabbitDeathTimer = null;
-    state.playerDeathEffectActive = false;
-    if (isFinalElimination) {
-      finishGame('lose');
-      return;
-    }
-
-    state.player.x = 80;
-    state.player.y = GAME_HEIGHT / 2;
-    state.player.jumpVelocityY = 0;
-    state.player.isJumping = false;
-    state.player.jumpElapsed = 0;
-    state.player.jumpStartY = state.player.y;
-    state.player.hurtTimer = 0.35;
-    state.player.spawnArmorTimer = PLAYER_SPAWN_ARMOR_DURATION;
-    state.player.animationState = 'hurt';
-    state.player.animationTime = 0;
-    state.hitStopTimer = 0;
-    beginRespawnCountdown(state.lives);
-  }, RABBIT_DEATH_ANIMATION_DURATION_MS);
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
+  effectsController.triggerRabbitDeathSequence(isFinalElimination);
 }
 
 function loadHighScore() {
@@ -1739,10 +518,6 @@ function tryFire() {
 
   state.fireCooldown = FIRE_COOLDOWN_SECONDS;
   playFireSfx();
-}
-
-function randomRange(min, max) {
-  return Math.random() * (max - min) + min;
 }
 
 function updatePlayerPerspectiveSize() {
@@ -1837,7 +612,7 @@ function resetGame() {
   clearRespawnCountdown();
   setFinalMessageThemeActive(false);
   hideOverlay();
-  state.gamePhase = 'playing';
+  setGamePhase('playing');
   state.score = 0;
   state.lives = 3;
   state.timeLeft = GAME_DURATION_SECONDS;
@@ -1863,7 +638,7 @@ function resetGame() {
   resetHazard(2, 140, 200, 150, 1, -1, 26, false);
   state.shots = [];
   state.collectEffects = [];
-    state.enemyKillEffects = [];
+  state.enemyKillEffects = [];
   if (fxLayerEl) {
     fxLayerEl.replaceChildren();
   }
@@ -1967,13 +742,13 @@ function setupInput() {
 
   if (fullscreenToggleEl) {
     fullscreenToggleEl.addEventListener('click', () => {
-      toggleFullscreen();
+      uiSystem.toggleFullscreen();
     });
   }
 
   if (clearJournalButtonEl) {
     clearJournalButtonEl.addEventListener('click', () => {
-      clearSessionJournal();
+      uiSystem.clearSessionJournal();
     });
   }
 
@@ -2100,25 +875,6 @@ function setupInput() {
   });
 }
 
-function intersects(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y) < a.size + b.size;
-}
-
-function bounceCircle(entity, dt) {
-  entity.x += entity.vx * entity.speed * dt;
-  entity.y += entity.vy * entity.speed * dt;
-
-  if (entity.x <= entity.size || entity.x >= GAME_WIDTH - entity.size) {
-    entity.vx *= -1;
-    entity.x = clamp(entity.x, entity.size, GAME_WIDTH - entity.size);
-  }
-
-  if (entity.y <= entity.size || entity.y >= GAME_HEIGHT - entity.size) {
-    entity.vy *= -1;
-    entity.y = clamp(entity.y, entity.size, GAME_HEIGHT - entity.size);
-  }
-}
-
 function update(dt) {
   if (!state.running || state.paused) {
     return;
@@ -2202,7 +958,7 @@ function update(dt) {
 
   updatePlayerPerspectiveSize();
 
-  bounceCircle(state.target, dt);
+  bounceCircle(state.target, dt, { GAME_WIDTH, GAME_HEIGHT, clamp });
   const difficultyMultiplier = getDifficultyMultiplier();
 
   if (state.elapsedTime >= getDifficultyProfile().extraWolfTime && !state.hazards[2].active) {
@@ -2241,7 +997,7 @@ function update(dt) {
     }
 
     hazard.speed = hazard.baseSpeed * difficultyMultiplier;
-    bounceCircle(hazard, dt);
+    bounceCircle(hazard, dt, { GAME_WIDTH, GAME_HEIGHT, clamp });
   });
 
   for (let i = state.shots.length - 1; i >= 0; i -= 1) {
@@ -2548,792 +1304,25 @@ async function loadTexture(device, sourcePath) {
   return { texture, width, height };
 }
 
-function writeRect(vertexData, offset, centerX, centerY, size, color, offsetX = 0, offsetY = 0) {
-  const finalCenterX = centerX + offsetX;
-  const finalCenterY = centerY + offsetY;
-  const x1 = (finalCenterX - size) / GAME_WIDTH * 2 - 1;
-  const y1 = 1 - (finalCenterY - size) / GAME_HEIGHT * 2;
-  const x2 = (finalCenterX + size) / GAME_WIDTH * 2 - 1;
-  const y2 = 1 - (finalCenterY + size) / GAME_HEIGHT * 2;
-
-  const [r, g, b, a] = color;
-
-  const vertices = [
-    x1, y1, r, g, b, a,
-    x2, y1, r, g, b, a,
-    x2, y2, r, g, b, a,
-    x1, y1, r, g, b, a,
-    x2, y2, r, g, b, a,
-    x1, y2, r, g, b, a
-  ];
-
-  if (offset + vertices.length > vertexData.length) {
-    return offset;
-  }
-
-  vertexData.set(vertices, offset);
-  return offset + vertices.length;
-}
-
-function writeRectWH(vertexData, offset, centerX, centerY, width, height, color, offsetX = 0, offsetY = 0) {
-  const finalCenterX = centerX + offsetX;
-  const finalCenterY = centerY + offsetY;
-  const x1 = (finalCenterX - width / 2) / GAME_WIDTH * 2 - 1;
-  const y1 = 1 - (finalCenterY - height / 2) / GAME_HEIGHT * 2;
-  const x2 = (finalCenterX + width / 2) / GAME_WIDTH * 2 - 1;
-  const y2 = 1 - (finalCenterY + height / 2) / GAME_HEIGHT * 2;
-
-  const [r, g, b, a] = color;
-  const vertices = [
-    x1, y1, r, g, b, a,
-    x2, y1, r, g, b, a,
-    x2, y2, r, g, b, a,
-    x1, y1, r, g, b, a,
-    x2, y2, r, g, b, a,
-    x1, y2, r, g, b, a
-  ];
-
-  if (offset + vertices.length > vertexData.length) {
-    return offset;
-  }
-
-  vertexData.set(vertices, offset);
-  return offset + vertices.length;
-}
-
-function drawArcadeStageCard(vertexData, offset, timer, offsetX = 0, offsetY = 0) {
-  const progress = clamp(1 - timer / STAGE_CARD_DURATION, 0, 1);
-  const fadeIn = clamp(progress / 0.18, 0, 1);
-  const fadeOut = clamp((1 - progress) / 0.2, 0, 1);
-  const alpha = Math.min(fadeIn, fadeOut);
-  if (alpha <= 0) {
-    return offset;
-  }
-
-  const panel = [0.05, 0.05, 0.09, alpha * 0.92];
-  const edge = [0.51, 0.43, 0.61, alpha * 0.82];
-  const text = [0.95, 0.88, 0.62, alpha * 0.95];
-  const accent = [0.98, 0.74, 0.32, alpha * 0.9];
-
-  offset = writeRectWH(vertexData, offset, GAME_WIDTH / 2, 124, 356, 74, panel, offsetX, offsetY);
-  offset = writeRectWH(vertexData, offset, GAME_WIDTH / 2, 89, 356, 3, edge, offsetX, offsetY);
-  offset = writeRectWH(vertexData, offset, GAME_WIDTH / 2, 159, 356, 3, edge, offsetX, offsetY);
-
-  const glyph = {
-    A: ['0110', '1001', '1111', '1001', '1001'],
-    D: ['1110', '1001', '1001', '1001', '1110'],
-    E: ['1111', '1000', '1110', '1000', '1111'],
-    G: ['0111', '1000', '1011', '1001', '0111'],
-    R: ['1110', '1001', '1110', '1010', '1001'],
-    S: ['0111', '1000', '0110', '0001', '1110'],
-    T: ['11111', '00100', '00100', '00100', '00100'],
-    Y: ['1001', '1001', '0110', '0010', '0010'],
-    '1': ['010', '110', '010', '010', '111'],
-    ' ': ['0', '0', '0', '0', '0']
-  };
-
-  const drawText = (word, x, y, scale, color) => {
-    let cursorX = x;
-    for (const char of word) {
-      const rows = glyph[char] || glyph[' '];
-      const glyphWidth = rows[0].length;
-      for (let ry = 0; ry < rows.length; ry += 1) {
-        for (let rx = 0; rx < rows[ry].length; rx += 1) {
-          if (rows[ry][rx] === '1') {
-            offset = writeRectWH(
-              vertexData,
-              offset,
-              cursorX + rx * scale,
-              y + ry * scale,
-              scale,
-              scale,
-              color,
-              offsetX,
-              offsetY
-            );
-          }
-        }
-      }
-      cursorX += (glyphWidth + 1.5) * scale;
-    }
-  };
-
-  drawText('STAGE 1', 354, 102, 4, text);
-  const readyPulse = 0.65 + 0.35 * Math.sin(progress * Math.PI * 7.5);
-  const readyColor = [accent[0], accent[1], accent[2], accent[3] * readyPulse];
-  drawText('READY', 396, 128, 4, readyColor);
-
-  return offset;
-}
-
 function drawPixelPasture(vertexData, offset, offsetX = 0, offsetY = 0, timeSeconds = 0) {
-  const skyTop = [0.32, 0.28, 0.49, 1.0];
-  const skyMid = [0.56, 0.36, 0.44, 1.0];
-  const horizonGlow = [0.92, 0.72, 0.33, 1.0];
-  const skyBlue = [0.35, 0.44, 0.63, 1.0];
-  const skyViolet = [0.53, 0.36, 0.57, 1.0];
-  const skyPeach = [0.85, 0.54, 0.39, 1.0];
-  const skyHaze = [0.74, 0.57, 0.49, 1.0];
-  const sunCore = [0.98, 0.93, 0.65, 1.0];
-  const sunInner = [0.9, 0.75, 0.58, 1.0];
-  const sunHalo = [0.73, 0.58, 0.62, 1.0];
-  const sunOuter = [0.62, 0.5, 0.6, 1.0];
-  const sunRay = [0.58, 0.5, 0.63, 1.0];
-  const cloudDark = [0.36, 0.29, 0.45, 1.0];
-  const cloudLit = [0.69, 0.51, 0.46, 1.0];
-  const horizonDark = [0.16, 0.11, 0.08, 1.0];
-  const horizonMid = [0.26, 0.18, 0.12, 1.0];
-  const mountainFar = [0.49, 0.4, 0.53, 1.0];
-  const mountainMid = [0.42, 0.33, 0.45, 1.0];
-  const mountainNear = [0.34, 0.27, 0.35, 1.0];
-  const mountainRim = [0.58, 0.49, 0.62, 1.0];
-  const mountainAtmos = [0.62, 0.51, 0.6, 1.0];
-  const fieldFar = [0.61, 0.56, 0.33, 1.0];
-  const fieldMid = [0.53, 0.5, 0.3, 1.0];
-  const fieldNear = [0.45, 0.46, 0.27, 1.0];
-  const grassDry = [0.66, 0.61, 0.38, 1.0];
-  const grassDark = [0.34, 0.39, 0.22, 1.0];
-  const grassNearGlow = [0.5, 0.6, 0.33, 1.0];
-  const grassDust = [0.57, 0.53, 0.33, 1.0];
-  const shrubDark = [0.32, 0.29, 0.16, 1.0];
-  const shrubLight = [0.38, 0.35, 0.2, 1.0];
-
-  const quantizeColor = (color, levels = 18) => {
-    const toStep = (value) => Math.round(clamp(value, 0, 1) * (levels - 1)) / (levels - 1);
-    return [toStep(color[0]), toStep(color[1]), toStep(color[2]), 1.0];
-  };
-  const mixColor = (a, b, t) => quantizeColor([
-    a[0] + (b[0] - a[0]) * t,
-    a[1] + (b[1] - a[1]) * t,
-    a[2] + (b[2] - a[2]) * t,
-    1.0
-  ]);
-  const smoothStep = (t) => {
-    const clamped = clamp(t, 0, 1);
-    return clamped * clamped * (3 - 2 * clamped);
-  };
-
-  const skyTopY = 24;
-  const skyBottomY = 304;
-  const skyBandCount = 30;
-  for (let i = 0; i < skyBandCount; i += 1) {
-    const t = i / (skyBandCount - 1);
-    const softT = smoothStep(t);
-    const blend = softT < 0.56
-      ? mixColor(skyTop, skyMid, smoothStep(softT / 0.56))
-      : mixColor(skyMid, horizonGlow, smoothStep((softT - 0.56) / 0.44));
-    const y1 = skyTopY + ((skyBottomY - skyTopY) * i) / skyBandCount;
-    const y2 = skyTopY + ((skyBottomY - skyTopY) * (i + 1)) / skyBandCount;
-    offset = writeRectWH(
-      vertexData,
-      offset,
-      GAME_WIDTH / 2,
-      (y1 + y2) / 2,
-      GAME_WIDTH,
-      Math.max(4, y2 - y1 + 1),
-      blend,
-      offsetX,
-      offsetY
-    );
-  }
-
-  const hazeTone = mixColor(skyMid, horizonGlow, 0.32);
-  for (let y = 74; y <= 246; y += 22) {
-    for (let x = 26; x <= GAME_WIDTH - 26; x += 30) {
-      if (((x * 3 + y * 2) % 31) < 4) {
-        offset = writeRectWH(vertexData, offset, x, y, 4, 2, hazeTone, offsetX, offsetY);
-      }
-    }
-  }
-
-  const sunX = 642;
-  const sunY = 66;
-  const sunFeather = mixColor(sunOuter, skyHaze, 0.86);
-  const sunMist = mixColor(sunHalo, skyMid, 0.82);
-  const sunRaySoft = mixColor(sunRay, skyViolet, 0.94);
-  const sunOuterSkyTone = mixColor(skyViolet, skyMid, 0.62);
-  const sunPulse = 0.5 + 0.5 * Math.sin(timeSeconds * 1.35);
-  const sunPulseWide = 0.5 + 0.5 * Math.sin(timeSeconds * 1.35 + 1.2);
-  const sunFeatherPulse = mixColor(sunFeather, sunOuterSkyTone, 0.8 + sunPulse * 0.05);
-  const sunMistPulse = mixColor(sunMist, sunOuterSkyTone, 0.66 + sunPulseWide * 0.05);
-  const sunOuterPulse = mixColor(mixColor(sunOuter, sunHalo, 0.28), sunOuterSkyTone, 0.5 + sunPulse * 0.035);
-  const sunRayPulse = mixColor(sunRaySoft, skyViolet, 0.88 + sunPulseWide * 0.04);
-  const sunRayEdgeTone = mixColor(skyViolet, skyMid, 0.68);
-  const drawDisc = (centerX, centerY, radius, color, pixelSize = 3, verticalScale = 1) => {
-    for (let px = -radius; px <= radius; px += pixelSize) {
-      for (let py = -radius; py <= radius; py += pixelSize) {
-        const normX = px / radius;
-        const normY = (py / verticalScale) / radius;
-        if ((normX * normX) + (normY * normY) <= 1) {
-          offset = writeRectWH(
-            vertexData,
-            offset,
-            centerX + px,
-            centerY + py,
-            pixelSize,
-            pixelSize,
-            color,
-            offsetX,
-            offsetY
-          );
-        }
-      }
-    }
-  };
-
-  drawDisc(sunX, sunY + 2, 46 + sunPulse * 0.8, sunFeatherPulse, 2, 0.94);
-  drawDisc(sunX, sunY + 2, 40 + sunPulseWide * 0.66, mixColor(sunFeatherPulse, sunMistPulse, 0.6), 2, 0.95);
-  drawDisc(sunX, sunY + 1, 33 + sunPulse * 0.46, mixColor(sunMistPulse, sunOuterPulse, 0.56), 2, 0.96);
-  drawDisc(sunX, sunY + 1, 27 + sunPulseWide * 0.3, mixColor(sunOuterPulse, mixColor(sunHalo, skyHaze, 0.36), 0.56), 2, 0.97);
-  drawDisc(sunX, sunY, 17, sunInner, 3, 0.98);
-  drawDisc(sunX, sunY, 11, sunCore, 2, 1);
-
-  const rayAngles = [
-    -0.38, -0.12, 0.16, 0.44, 0.72, 1.0, 1.28, 1.56, 1.84, 2.12, 2.4, 2.68, 2.96, 3.24, 3.52, 3.8, 4.08, 4.36, 4.64, 4.92, 5.2, 5.48, 5.76, 6.04
-  ];
-  for (const angle of rayAngles) {
-    for (let step = 1; step < 6; step += 1) {
-      const outward = step / 5;
-      const radius = 24 + step * 7;
-      const pulseRadius = radius + sunPulse * (0.65 + outward * 0.55);
-      const spread = step < 2 ? 0.04 : 0.02;
-      const branches = step < 2 ? [-spread, 0, spread] : [0];
-      for (const branch of branches) {
-        const rayAngle = angle + branch;
-        const px = sunX + Math.cos(rayAngle) * pulseRadius;
-        const py = sunY + Math.sin(rayAngle) * pulseRadius;
-        const sparkleSize = 1;
-        const rayFade = 0.8 + outward * 0.16 + Math.abs(branch) * 0.25;
-        const rayColor = mixColor(sunRayPulse, sunRayEdgeTone, rayFade);
-        offset = writeRectWH(vertexData, offset, px, py, sparkleSize, sparkleSize, rayColor, offsetX, offsetY);
-      }
-    }
-  }
-
-  const cloudBands = [
-    [598, 46, 248, 18], [696, 40, 214, 16], [756, 66, 172, 12], [486, 86, 144, 14], [722, 104, 204, 15]
-  ];
-  const drawCloudPuffs = (x, y, w, h, baseColor, litColor) => {
-    const shadowColor = mixColor(baseColor, cloudDark, 0.3);
-    const edgeFade = mixColor(baseColor, skyViolet, 0.62);
-
-    for (let row = 0; row < h; row += 2) {
-      const rowT = row / Math.max(1, h - 1);
-      const arch = Math.sin(rowT * Math.PI);
-      const width = w * (0.48 + arch * 0.58);
-      const yDrift = (rowT - 0.5) * h * 0.66;
-      const xDrift = Math.sin((row + x * 0.02) * 0.37) * (w * 0.024);
-      const rowBase = mixColor(baseColor, edgeFade, Math.abs(rowT - 0.5) * 1.18);
-
-      for (let segment = 0; segment < 14; segment += 1) {
-        const segT = segment / 13;
-        const taper = Math.sin(segT * Math.PI);
-        const segX = x - width / 2 + segT * width + Math.sin((segment * 1.4 + row * 0.3) + x * 0.01) * 2.4;
-        const segY = y + yDrift + Math.sin((segment * 0.95) + row * 0.14) * 0.95;
-        const segW = Math.max(3, (w / 14) * (0.54 + taper * 0.62));
-        const segH = Math.max(2, 2 + taper * 1.3);
-        offset = writeRectWH(vertexData, offset, segX + xDrift, segY, segW, segH, rowBase, offsetX, offsetY);
-
-        if (rowT < 0.62) {
-          const highlightMix = clamp(0.36 + (0.62 - rowT) * 0.64 - Math.abs(segT - 0.44) * 0.38, 0, 0.9);
-          const highlight = mixColor(rowBase, litColor, highlightMix);
-          offset = writeRectWH(vertexData, offset, segX + xDrift - 1.2, segY - 1.1, Math.max(2, segW * 0.52), 1, highlight, offsetX, offsetY);
-        }
-      }
-    }
-
-    for (let row = 0; row < Math.max(4, Math.floor(h * 0.5)); row += 2) {
-      const rowT = row / Math.max(1, h * 0.5 - 1);
-      const width = w * (0.5 + (1 - rowT) * 0.38);
-      const yOffset = h * 0.24 + row * 0.7;
-      const shade = mixColor(shadowColor, baseColor, rowT * 0.4);
-      for (let segment = 0; segment < 7; segment += 1) {
-        const segT = segment / 6;
-        const segX = x - width / 2 + segT * width + Math.sin((segment + row) * 0.9) * 1.3;
-        const segW = Math.max(4, (w / 7) * (0.64 + Math.sin(segT * Math.PI) * 0.28));
-        offset = writeRectWH(vertexData, offset, segX, y + yOffset, segW, 1, shade, offsetX, offsetY);
-      }
-    }
-  };
-
-  cloudBands.forEach(([x, y, w, h]) => {
-    const farFactor = smoothStep(clamp((116 - y) / 88, 0, 1));
-    const baseCloud = mixColor(cloudDark, skyViolet, 0.3 + farFactor * 0.2);
-    const litCloud = mixColor(cloudLit, skyHaze, 0.54 + farFactor * 0.28);
-    drawCloudPuffs(x, y, w, h, baseCloud, litCloud);
-  });
-
-  const drawRidge = (centerX, crestY, baseWidth, height, color, crestColor, drift = 0.2, rough = 0.18) => {
-    for (let row = 0; row < height; row += 1) {
-      const t = row / Math.max(1, height - 1);
-      const eased = Math.pow(t, 0.78);
-      const widthNoise = 1 + Math.sin((row + centerX * 0.01) * 0.21) * rough;
-      const width = Math.max(10, Math.round(baseWidth * eased * widthNoise));
-      const xShift = Math.sin((row + centerX * 0.02) * 0.17) * drift * row;
-      const y = crestY + row;
-      const rowColor = row < 4 ? mixColor(crestColor, color, smoothStep(row / 4)) : color;
-      offset = writeRectWH(vertexData, offset, centerX + xShift, y, width, 1, rowColor, offsetX, offsetY);
-    }
-  };
-
-  const drawRidgeTexture = (centerX, crestY, baseWidth, height, baseColor, crestColor, drift = 0.2, rough = 0.18, depth = 1) => {
-    const textureDark = mixColor(baseColor, horizonDark, 0.34 + depth * 0.08);
-    const textureMid = mixColor(baseColor, horizonMid, 0.2 + depth * 0.06);
-    const textureLight = mixColor(crestColor, skyHaze, 0.22);
-
-    for (let row = 3; row < height - 1; row += 2) {
-      const t = row / Math.max(1, height - 1);
-      const eased = Math.pow(t, 0.78);
-      const widthNoise = 1 + Math.sin((row + centerX * 0.01) * 0.21) * rough;
-      const width = Math.max(12, Math.round(baseWidth * eased * widthNoise));
-      const xShift = Math.sin((row + centerX * 0.02) * 0.17) * drift * row;
-      const y = crestY + row;
-      const left = centerX + xShift - width / 2;
-
-      const seamCount = Math.max(5, Math.floor(width / 48));
-      for (let seam = 0; seam < seamCount; seam += 1) {
-        const seamT = seamCount <= 1 ? 0.5 : seam / (seamCount - 1);
-        const seamWave = Math.sin((row * 0.23) + seam * 1.7 + centerX * 0.01) * 5;
-        const seamX = left + seamT * width + seamWave;
-        const seamW = Math.max(2, width / (seamCount * 2.4));
-        const seamH = 1;
-        const seamShade = mixColor(textureMid, textureDark, clamp(0.14 + seamT * 0.42 + t * 0.2, 0, 0.8));
-        offset = writeRectWH(vertexData, offset, seamX, y, seamW, seamH, seamShade, offsetX, offsetY);
-
-        if (row < height * 0.34 && (seam % 2) === 0) {
-          const highlight = mixColor(textureLight, baseColor, 0.36 + seamT * 0.24);
-          offset = writeRectWH(vertexData, offset, seamX - 1, y - 1, Math.max(1, seamW * 0.55), 1, highlight, offsetX, offsetY);
-        }
-      }
-
-      if ((row % 6) === 1) {
-        const shelfWidth = width * (0.24 + Math.sin(row * 0.11 + centerX * 0.02) * 0.06);
-        const shelfX = centerX + xShift - width * 0.18 + Math.sin(row * 0.19) * 4;
-        const shelfColor = mixColor(textureDark, textureMid, 0.34 + t * 0.28);
-        offset = writeRectWH(vertexData, offset, shelfX, y + 0.2, Math.max(10, shelfWidth), 1, shelfColor, offsetX, offsetY);
-      }
-    }
-  };
-
-  const warmHorizonTint = mixColor(horizonGlow, skyHaze, 0.44);
-  const farRidge = mixColor(mixColor(mountainFar, skyViolet, 0.74), warmHorizonTint, 0.4);
-  const midRidge = mixColor(mixColor(mountainMid, skyViolet, 0.62), warmHorizonTint, 0.34);
-  const nearRidge = mixColor(mixColor(mountainNear, skyMid, 0.5), warmHorizonTint, 0.28);
-  const crestSoftFar = mixColor(farRidge, skyHaze, 0.46);
-  const crestSoftMid = mixColor(midRidge, skyHaze, 0.4);
-  const crestSoftNear = mixColor(nearRidge, skyHaze, 0.32);
-
-  drawRidge(152, 236, 260, 38, farRidge, crestSoftFar, 0.08, 0.08);
-  drawRidge(352, 230, 370, 48, midRidge, crestSoftMid, 0.1, 0.1);
-  drawRidge(610, 224, 470, 56, nearRidge, crestSoftNear, 0.12, 0.11);
-  drawRidge(846, 238, 280, 40, midRidge, crestSoftMid, 0.09, 0.09);
-  drawRidgeTexture(152, 236, 260, 38, farRidge, crestSoftFar, 0.08, 0.08, 0.48);
-  drawRidgeTexture(352, 230, 370, 48, midRidge, crestSoftMid, 0.1, 0.1, 0.82);
-  drawRidgeTexture(610, 224, 470, 56, nearRidge, crestSoftNear, 0.12, 0.11, 1.22);
-  drawRidgeTexture(846, 238, 280, 40, midRidge, crestSoftMid, 0.09, 0.09, 0.76);
-
-  const farHazeBase = mixColor(mountainAtmos, skyViolet, 0.6);
-  const farHaze = mixColor(farHazeBase, warmHorizonTint, 0.42);
-  const midHaze = mixColor(farHaze, mixColor(skyMid, warmHorizonTint, 0.28), 0.3);
-  const lowHaze = mixColor(midHaze, mixColor(skyHaze, warmHorizonTint, 0.5), 0.34);
-
-  const drawAtmosBand = (centerY, bandHeight, bandWidth, bandColor, tintColor, drift = 0.16) => {
-    for (let row = 0; row < bandHeight; row += 1) {
-      const t = row / Math.max(1, bandHeight - 1);
-      const softT = smoothStep(t);
-      const rowWidth = bandWidth * (0.86 + t * 0.22);
-      const widthNoise = 1 + Math.sin((row + centerY) * 0.23) * 0.04;
-      const xShift = Math.sin((row + centerY) * 0.17) * drift * row;
-      const color = mixColor(bandColor, tintColor, softT * 0.22);
-      offset = writeRectWH(
-        vertexData,
-        offset,
-        GAME_WIDTH / 2 + xShift,
-        centerY - bandHeight / 2 + row,
-        Math.max(80, rowWidth * widthNoise),
-        1,
-        color,
-        offsetX,
-        offsetY
-      );
-    }
-  };
-
-  drawAtmosBand(261, 20, GAME_WIDTH * 0.96, farHaze, skyViolet, 0.07);
-  drawAtmosBand(273, 14, GAME_WIDTH * 0.9, midHaze, skyMid, 0.08);
-  drawAtmosBand(282, 8, GAME_WIDTH * 0.84, lowHaze, skyHaze, 0.09);
-
-  const drawFoothillTexture = (centerY, bandHeight, bandWidth, baseColor, shadowColor, highlightColor, detail = 1) => {
-    const rowStep = 2;
-    for (let row = 0; row < bandHeight; row += rowStep) {
-      const t = row / Math.max(1, bandHeight - 1);
-      const softT = smoothStep(t);
-      const rowWidth = bandWidth * (0.78 + softT * 0.34);
-      const y = centerY - bandHeight / 2 + row;
-      const xBase = GAME_WIDTH / 2 + Math.sin((row + centerY) * 0.2) * (3 + detail * 2);
-      const seamCount = Math.max(12, Math.floor((rowWidth / 80) * detail));
-      for (let seam = 0; seam < seamCount; seam += 1) {
-        const seamT = seamCount <= 1 ? 0.5 : seam / (seamCount - 1);
-        const seamWave = Math.sin((row * 0.33) + seam * 1.28 + centerY * 0.01) * (2.8 + detail * 1.2);
-        const seamX = xBase - rowWidth / 2 + seamT * rowWidth + seamWave;
-        const seamW = Math.max(3, rowWidth / (seamCount * 2.2));
-        const seamShade = mixColor(baseColor, shadowColor, clamp(0.2 + seamT * 0.45 + softT * 0.24, 0, 0.82));
-        offset = writeRectWH(vertexData, offset, seamX, y, seamW, 1, seamShade, offsetX, offsetY);
-
-        if (row < bandHeight * 0.42 && (seam % 2) === 0) {
-          const seamHighlight = mixColor(baseColor, highlightColor, clamp(0.22 + (0.42 - t) * 0.62, 0, 0.72));
-          offset = writeRectWH(vertexData, offset, seamX - 1, y - 1, Math.max(2, seamW * 0.45), 1, seamHighlight, offsetX, offsetY);
-        }
-      }
-
-      if ((row % 6) === 2) {
-        const shelfWidth = rowWidth * (0.14 + Math.sin((row + centerY) * 0.14) * 0.05);
-        const shelfX = xBase + Math.sin(row * 0.27 + centerY * 0.03) * 12;
-        const shelfColor = mixColor(shadowColor, baseColor, 0.4 + softT * 0.2);
-        offset = writeRectWH(vertexData, offset, shelfX, y + 0.1, Math.max(20, shelfWidth), 1, shelfColor, offsetX, offsetY);
-      }
-    }
-  };
-
-  const foothillBaseFar = mixColor(farHaze, midHaze, 0.34);
-  const foothillBaseMid = mixColor(midHaze, lowHaze, 0.36);
-  const foothillShadow = mixColor(horizonMid, farHaze, 0.54);
-  const foothillHighlight = mixColor(lowHaze, skyHaze, 0.42);
-  drawFoothillTexture(263, 18, GAME_WIDTH * 0.92, foothillBaseFar, foothillShadow, foothillHighlight, 0.95);
-  drawFoothillTexture(275, 12, GAME_WIDTH * 0.86, foothillBaseMid, mixColor(foothillShadow, horizonDark, 0.28), foothillHighlight, 1.1);
-
-  const centerWarm = mixColor(warmHorizonTint, skyHaze, 0.54);
-  const centerWarmSoft = mixColor(centerWarm, lowHaze, 0.56);
-  offset = writeRectWH(vertexData, offset, GAME_WIDTH * 0.57, 266, GAME_WIDTH * 0.42, 10, centerWarmSoft, offsetX, offsetY);
-  offset = writeRectWH(vertexData, offset, GAME_WIDTH * 0.57, 272, GAME_WIDTH * 0.34, 8, mixColor(centerWarmSoft, midHaze, 0.52), offsetX, offsetY);
-  offset = writeRectWH(vertexData, offset, GAME_WIDTH * 0.57, 277, GAME_WIDTH * 0.26, 6, mixColor(centerWarmSoft, lowHaze, 0.5), offsetX, offsetY);
-
-  for (let y = 252; y <= 286; y += 4) {
-    for (let x = 26; x <= GAME_WIDTH - 26; x += 18) {
-      const n = (x * 13 + y * 17) % 61;
-      if (n < 1) {
-        const fleckColor = y < 266 ? farHaze : (y < 278 ? midHaze : lowHaze);
-        const warmFleck = mixColor(fleckColor, skyViolet, 0.22);
-        const fleckWidth = 2;
-        offset = writeRectWH(vertexData, offset, x, y, fleckWidth, 1, warmFleck, offsetX, offsetY);
-      }
-    }
-  }
-
-  offset = writeRectWH(vertexData, offset, GAME_WIDTH / 2, 287, GAME_WIDTH * 0.9, 2, mixColor(lowHaze, horizonMid, 0.45), offsetX, offsetY);
-
-  const groundTopY = 284;
-  const groundBottomY = 540;
-  const groundBandCount = 24;
-  for (let i = 0; i < groundBandCount; i += 1) {
-    const t = i / (groundBandCount - 1);
-    const blend = t < 0.46
-      ? mixColor(fieldFar, fieldMid, t / 0.46)
-      : mixColor(fieldMid, fieldNear, (t - 0.46) / 0.54);
-    const y1 = groundTopY + ((groundBottomY - groundTopY) * i) / groundBandCount;
-    const y2 = groundTopY + ((groundBottomY - groundTopY) * (i + 1)) / groundBandCount;
-    offset = writeRectWH(
-      vertexData,
-      offset,
-      GAME_WIDTH / 2,
-      (y1 + y2) / 2,
-      GAME_WIDTH,
-      Math.max(4, y2 - y1 + 1),
-      blend,
-      offsetX,
-      offsetY
-    );
-  }
-
-  for (let y = 304; y <= 392; y += 14) {
-    for (let x = 20; x <= GAME_WIDTH - 20; x += 20) {
-      const value = (x * 5 + y * 9) % 29;
-      if (value < 3) {
-        offset = writeRectWH(vertexData, offset, x, y, 2, 3, grassDry, offsetX, offsetY);
-      }
-    }
-  }
-
-  for (let y = 396; y <= 470; y += 12) {
-    for (let x = 16; x <= GAME_WIDTH - 16; x += 16) {
-      const value = (x * 7 + y * 11) % 31;
-      if (value < 4) {
-        offset = writeRectWH(vertexData, offset, x, y, 2, 5, grassDry, offsetX, offsetY);
-      } else if (value > 28) {
-        offset = writeRectWH(vertexData, offset, x, y, 2, 4, grassDark, offsetX, offsetY);
-      }
-    }
-  }
-
-  for (let y = 474; y <= 536; y += 10) {
-    for (let x = 12; x <= GAME_WIDTH - 12; x += 12) {
-      const value = (x * 9 + y * 13) % 33;
-      if (value < 5) {
-        offset = writeRectWH(vertexData, offset, x, y, 2, 6, grassNearGlow, offsetX, offsetY);
-      } else if (value > 29) {
-        offset = writeRectWH(vertexData, offset, x, y, 2, 5, grassDark, offsetX, offsetY);
-      }
-    }
-  }
-
-  for (let y = 332; y <= 536; y += 11) {
-    for (let x = 14; x <= GAME_WIDTH - 14; x += 14) {
-      if (((x * 3 + y * 7) % 41) < 5) {
-        offset = writeRectWH(vertexData, offset, x, y, 3, 3, grassDust, offsetX, offsetY);
-      }
-    }
-  }
-
-  const shrubs = [
-    [88, 430], [132, 448], [176, 420], [222, 446], [264, 432], [620, 412], [686, 428],
-    [752, 442], [826, 420], [892, 438], [714, 510], [788, 498], [858, 520]
-  ];
-  for (const [x, y] of shrubs) {
-    offset = writeRectWH(vertexData, offset, x, y + 3, 15, 8, shrubDark, offsetX, offsetY);
-    offset = writeRectWH(vertexData, offset, x, y, 19, 10, shrubLight, offsetX, offsetY);
-  }
-
-  return offset;
+  return renderDrawPixelPasture(vertexData, offset, offsetX, offsetY, timeSeconds);
 }
 
-function drawWolfSkull(vertexData, offset, centerX, centerY, size, offsetX = 0, offsetY = 0, tumbleAngle = 0) {
-  const unit = Math.max(2, Math.round((size * WOLF_RENDER_SCALE) / 10));
-  const boneDeep = [0.66, 0.64, 0.6, 1.0];
-  const boneShade = [0.76, 0.74, 0.7, 1.0];
-  const bone = [0.86, 0.84, 0.79, 1.0];
-  const boneLight = [0.93, 0.91, 0.87, 1.0];
-  const voidColor = [0.07, 0.07, 0.08, 1.0];
-  const tooth = [0.95, 0.94, 0.9, 1.0];
-
-  const pixels = [
-    [-3, -6, boneDeep], [-2, -6, boneShade], [2, -6, boneShade], [3, -6, boneDeep],
-    [-4, -5, boneDeep], [-3, -5, boneShade], [-2, -5, bone], [-1, -5, bone], [0, -5, boneLight], [1, -5, bone], [2, -5, bone], [3, -5, boneShade], [4, -5, boneDeep],
-    [-5, -4, boneDeep], [-4, -4, boneShade], [-3, -4, bone], [-2, -4, bone], [-1, -4, boneLight], [0, -4, boneLight], [1, -4, boneLight], [2, -4, bone], [3, -4, bone], [4, -4, boneShade], [5, -4, boneDeep],
-    [-6, -3, boneDeep], [-5, -3, boneShade], [-4, -3, bone], [-3, -3, bone], [-2, -3, voidColor], [-1, -3, voidColor], [0, -3, boneLight], [1, -3, voidColor], [2, -3, voidColor], [3, -3, bone], [4, -3, bone], [5, -3, boneShade], [6, -3, boneDeep],
-    [-6, -2, boneDeep], [-5, -2, boneShade], [-4, -2, bone], [-3, -2, voidColor], [-2, -2, voidColor], [-1, -2, voidColor], [0, -2, bone], [1, -2, voidColor], [2, -2, voidColor], [3, -2, voidColor], [4, -2, bone], [5, -2, boneShade], [6, -2, boneDeep],
-    [-5, -1, boneShade], [-4, -1, bone], [-3, -1, bone], [-2, -1, bone], [-1, -1, bone], [0, -1, voidColor], [1, -1, bone], [2, -1, bone], [3, -1, bone], [4, -1, bone], [5, -1, boneShade],
-    [-5, 0, boneShade], [-4, 0, bone], [-3, 0, bone], [-2, 0, bone], [-1, 0, voidColor], [0, 0, voidColor], [1, 0, voidColor], [2, 0, bone], [3, 0, bone], [4, 0, bone], [5, 0, boneShade],
-    [-4, 1, boneShade], [-3, 1, bone], [-2, 1, bone], [-1, 1, bone], [0, 1, bone], [1, 1, bone], [2, 1, bone], [3, 1, bone], [4, 1, boneShade],
-    [-3, 2, boneShade], [-2, 2, bone], [-1, 2, tooth], [0, 2, bone], [1, 2, tooth], [2, 2, bone], [3, 2, boneShade],
-    [-2, 3, boneShade], [-1, 3, tooth], [0, 3, boneDeep], [1, 3, tooth], [2, 3, boneShade],
-    [-1, 4, boneShade], [0, 4, boneDeep], [1, 4, boneShade]
-  ];
-
-  const cosA = Math.cos(tumbleAngle);
-  const sinA = Math.sin(tumbleAngle);
-
-  for (const [gridX, gridY, color] of pixels) {
-    const rotatedX = gridX * cosA - gridY * sinA;
-    const rotatedY = gridX * sinA + gridY * cosA;
-    offset = writeRectWH(
-      vertexData,
-      offset,
-      centerX + rotatedX * unit,
-      centerY + rotatedY * unit,
-      unit,
-      unit,
-      color,
-      offsetX,
-      offsetY
-    );
-  }
-
-  return offset;
-}
 
 function drawWolfHead(vertexData, offset, centerX, centerY, size, offsetX = 0, offsetY = 0, isFalling = false, tumbleAngle = 0, showKnockoutEyes = false, knockoutProgress = 0) {
-  if (isFalling && !showKnockoutEyes) {
-    return drawWolfSkull(vertexData, offset, centerX, centerY, size, offsetX, offsetY, tumbleAngle);
-  }
-
-  const baseUnit = Math.max(2, Math.round((size * WOLF_RENDER_SCALE) / 13));
-  const popPulse = Math.pow(Math.sin(clamp(knockoutProgress, 0, 1) * Math.PI), 0.75);
-  const popScale = showKnockoutEyes ? (1 + 0.14 * popPulse) : 1;
-  const unit = baseUnit * popScale;
-  const outline = [0.12, 0.16, 0.25, 1.0];
-  const deep = [0.2, 0.26, 0.39, 1.0];
-  const dark = [0.28, 0.35, 0.5, 1.0];
-  const mid = [0.39, 0.47, 0.65, 1.0];
-  const light = [0.53, 0.6, 0.78, 1.0];
-  const pale = [0.7, 0.73, 0.9, 1.0];
-  const earInner = [0.18, 0.22, 0.34, 1.0];
-  const earInnerRim = [0.45, 0.52, 0.7, 1.0];
-  const stripe = [0.16, 0.2, 0.3, 1.0];
-  const muzzle = [0.66, 0.69, 0.86, 1.0];
-  const muzzleShade = [0.5, 0.55, 0.72, 1.0];
-  const eyeAmber = [0.95, 0.68, 0.2, 1.0];
-  const eyeGlow = [1.0, 0.93, 0.64, 1.0];
-  const eyeLid = [0.11, 0.14, 0.2, 1.0];
-  const pupil = [0.06, 0.07, 0.09, 1.0];
-  const xEye = [0.12, 0.07, 0.09, 1.0];
-  const nose = [0.02, 0.03, 0.05, 1.0];
-  const noseSoft = [0.14, 0.16, 0.2, 1.0];
-  const pixels = [
-    [-8, -11, outline], [8, -11, outline],
-    [-9, -10, outline], [-8, -10, earInner], [-7, -10, outline], [-1, -10, dark], [0, -10, stripe], [1, -10, dark], [7, -10, outline], [8, -10, earInner], [9, -10, outline],
-    [-9, -9, deep], [-8, -9, earInner], [-7, -9, earInnerRim], [7, -9, earInnerRim], [8, -9, earInner], [9, -9, deep],
-    [-4, -9, outline], [-3, -9, deep], [-2, -9, dark], [-1, -9, stripe], [0, -9, stripe], [1, -9, stripe], [2, -9, dark], [3, -9, deep], [4, -9, outline],
-    [-9, -8, deep], [-8, -8, earInnerRim], [-7, -8, earInner], [-6, -8, outline], [-5, -8, deep], [-4, -8, dark], [-3, -8, mid], [-2, -8, dark], [-1, -8, stripe], [0, -8, stripe], [1, -8, stripe], [2, -8, dark], [3, -8, mid], [4, -8, dark], [5, -8, deep], [6, -8, outline], [7, -8, earInner], [8, -8, earInnerRim], [9, -8, deep],
-    [-8, -7, outline], [-7, -7, earInnerRim], [-6, -7, deep], [-5, -7, dark], [-4, -7, mid], [-3, -7, light], [-2, -7, mid], [-1, -7, dark], [0, -7, stripe], [1, -7, dark], [2, -7, mid], [3, -7, light], [4, -7, mid], [5, -7, dark], [6, -7, deep], [7, -7, earInnerRim], [8, -7, outline],
-    [-8, -6, outline], [-7, -6, deep], [-6, -6, dark], [-5, -6, mid], [-4, -6, light], [-3, -6, pale], [-2, -6, light], [-1, -6, dark], [0, -6, stripe], [1, -6, dark], [2, -6, light], [3, -6, pale], [4, -6, light], [5, -6, mid], [6, -6, dark], [7, -6, deep], [8, -6, outline],
-    [-9, -5, outline], [-8, -5, deep], [-7, -5, dark], [-6, -5, mid], [-5, -5, light], [-4, -5, pale], [-3, -5, light], [-2, -5, pale], [-1, -5, dark], [0, -5, stripe], [1, -5, dark], [2, -5, pale], [3, -5, light], [4, -5, pale], [5, -5, light], [6, -5, mid], [7, -5, dark], [8, -5, deep], [9, -5, outline],
-    [-10, -4, outline], [-9, -4, deep], [-8, -4, dark], [-7, -4, mid], [-6, -4, light], [-5, -4, pale], [-4, -4, eyeLid], [-3, -4, eyeGlow], [-2, -4, eyeAmber], [-1, -4, eyeGlow], [0, -4, stripe], [1, -4, eyeGlow], [2, -4, eyeAmber], [3, -4, eyeGlow], [4, -4, eyeLid], [5, -4, pale], [6, -4, light], [7, -4, mid], [8, -4, dark], [9, -4, deep], [10, -4, outline],
-    [-10, -3, outline], [-9, -3, deep], [-8, -3, dark], [-7, -3, mid], [-6, -3, light], [-5, -3, pale], [-4, -3, dark], [-3, -3, eyeAmber], [-2, -3, pupil], [-1, -3, eyeGlow], [0, -3, stripe], [1, -3, eyeGlow], [2, -3, pupil], [3, -3, eyeAmber], [4, -3, dark], [5, -3, pale], [6, -3, light], [7, -3, mid], [8, -3, dark], [9, -3, deep], [10, -3, outline],
-    [-10, -2, outline], [-9, -2, deep], [-8, -2, dark], [-7, -2, mid], [-6, -2, light], [-5, -2, dark], [-4, -2, muzzleShade], [-3, -2, pale], [-2, -2, eyeGlow], [-1, -2, pale], [0, -2, stripe], [1, -2, pale], [2, -2, eyeGlow], [3, -2, pale], [4, -2, muzzleShade], [5, -2, dark], [6, -2, light], [7, -2, mid], [8, -2, dark], [9, -2, deep], [10, -2, outline],
-    [-9, -1, outline], [-8, -1, deep], [-7, -1, dark], [-6, -1, mid], [-5, -1, light], [-4, -1, muzzleShade], [-3, -1, muzzle], [-2, -1, muzzle], [-1, -1, muzzle], [0, -1, nose], [1, -1, muzzle], [2, -1, muzzle], [3, -1, muzzle], [4, -1, muzzleShade], [5, -1, light], [6, -1, mid], [7, -1, dark], [8, -1, deep], [9, -1, outline],
-    [-9, 0, outline], [-8, 0, deep], [-7, 0, dark], [-6, 0, mid], [-5, 0, light], [-4, 0, muzzleShade], [-3, 0, muzzle], [-2, 0, muzzle], [-1, 0, noseSoft], [0, 0, nose], [1, 0, noseSoft], [2, 0, muzzle], [3, 0, muzzle], [4, 0, muzzleShade], [5, 0, light], [6, 0, mid], [7, 0, dark], [8, 0, deep], [9, 0, outline],
-    [-8, 1, outline], [-7, 1, deep], [-6, 1, dark], [-5, 1, mid], [-4, 1, muzzleShade], [-3, 1, muzzle], [-2, 1, muzzle], [-1, 1, muzzle], [0, 1, nose], [1, 1, muzzle], [2, 1, muzzle], [3, 1, muzzle], [4, 1, muzzleShade], [5, 1, mid], [6, 1, dark], [7, 1, deep], [8, 1, outline],
-    [-7, 2, outline], [-6, 2, deep], [-5, 2, dark], [-4, 2, mid], [-3, 2, muzzleShade], [-2, 2, muzzle], [-1, 2, muzzle], [0, 2, dark], [1, 2, muzzle], [2, 2, muzzle], [3, 2, muzzleShade], [4, 2, mid], [5, 2, dark], [6, 2, deep], [7, 2, outline],
-    [-6, 3, outline], [-5, 3, deep], [-4, 3, dark], [-3, 3, mid], [-2, 3, muzzleShade], [-1, 3, muzzle], [0, 3, outline], [1, 3, muzzle], [2, 3, muzzleShade], [3, 3, mid], [4, 3, dark], [5, 3, deep], [6, 3, outline],
-    [-4, 4, deep], [-3, 4, dark], [-2, 4, muzzleShade], [-1, 4, muzzle], [0, 4, outline], [1, 4, muzzle], [2, 4, muzzleShade], [3, 4, dark], [4, 4, deep],
-    [-3, 5, deep], [-2, 5, muzzleShade], [-1, 5, muzzle], [0, 5, muzzle], [1, 5, muzzle], [2, 5, muzzleShade], [3, 5, deep],
-    [-2, 6, deep], [-1, 6, muzzleShade], [0, 6, muzzle], [1, 6, muzzleShade], [2, 6, deep],
-    [-1, 7, deep], [0, 7, dark], [1, 7, deep],
-    [0, 8, outline],
-    [0, 9, outline],
-    [-8, -7, outline], [8, -7, outline],
-    [-9, -4, outline], [9, -4, outline],
-    [-7, 1, outline], [7, 1, outline]
-  ];
-
-  for (const [gridX, gridY, color] of pixels) {
-    offset = writeRectWH(
-      vertexData,
-      offset,
-      centerX + gridX * unit,
-      centerY + gridY * unit,
-      unit,
-      unit,
-      color,
-      offsetX,
-      offsetY
-    );
-  }
-
-  if (showKnockoutEyes) {
-    const xEyePixels = [
-      [-3, -4], [-2, -3], [-1, -2], [-3, -2], [-1, -4],
-      [1, -4], [2, -3], [3, -2], [1, -2], [3, -4]
-    ];
-
-    for (const [gridX, gridY] of xEyePixels) {
-      offset = writeRectWH(
-        vertexData,
-        offset,
-        centerX + gridX * unit,
-        centerY + gridY * unit,
-        unit,
-        unit,
-        xEye,
-        offsetX,
-        offsetY
-      );
-    }
-  }
-
-  return offset;
+  return renderDrawWolfHead(vertexData, offset, centerX, centerY, size, offsetX, offsetY, isFalling, tumbleAngle, showKnockoutEyes, knockoutProgress);
 }
+
 
 function drawCarrot(vertexData, offset, centerX, centerY, size, offsetX = 0, offsetY = 0) {
-  const unit = Math.max(2, Math.round((size * CARROT_RENDER_SCALE) / 9));
-  const leafDark = [0.15, 0.48, 0.2, 1.0];
-  const leafMid = [0.21, 0.63, 0.27, 1.0];
-  const leafBright = [0.34, 0.8, 0.36, 1.0];
-  const stem = [0.52, 0.38, 0.21, 1.0];
-  const carrotDark = [0.73, 0.3, 0.06, 1.0];
-  const carrotMid = [0.88, 0.43, 0.1, 1.0];
-  const carrotLight = [0.99, 0.62, 0.24, 1.0];
-  const carrotHighlight = [1.0, 0.76, 0.4, 1.0];
-  const carrotOutline = [0.48, 0.2, 0.03, 1.0];
-
-  const pixels = [
-    [0, -6, leafBright],
-    [-1, -5, leafMid], [0, -5, leafBright], [1, -5, leafMid],
-    [-2, -4, leafDark], [-1, -4, leafMid], [0, -4, leafBright], [1, -4, leafMid], [2, -4, leafDark],
-    [-2, -3, leafDark], [-1, -3, leafMid], [0, -3, stem], [1, -3, leafMid], [2, -3, leafDark],
-    [-3, -2, carrotOutline], [3, -2, carrotOutline],
-    [-2, -2, carrotDark], [-1, -2, carrotMid], [0, -2, carrotLight], [1, -2, carrotMid], [2, -2, carrotDark],
-    [-3, -1, carrotOutline], [3, -1, carrotOutline],
-    [-2, -1, carrotDark], [-1, -1, carrotMid], [0, -1, carrotHighlight], [1, -1, carrotMid], [2, -1, carrotDark],
-    [-3, 0, carrotOutline], [3, 0, carrotOutline],
-    [-2, 0, carrotDark], [-1, 0, carrotMid], [0, 0, carrotLight], [1, 0, carrotMid], [2, 0, carrotDark],
-    [-3, 1, carrotOutline], [3, 1, carrotOutline],
-    [-2, 1, carrotDark], [-1, 1, carrotMid], [0, 1, carrotHighlight], [1, 1, carrotMid], [2, 1, carrotDark],
-    [-2, 2, carrotOutline], [2, 2, carrotOutline],
-    [-1, 2, carrotDark], [0, 2, carrotMid], [1, 2, carrotDark],
-    [-2, 3, carrotOutline], [2, 3, carrotOutline],
-    [-1, 3, carrotDark], [0, 3, carrotMid], [1, 3, carrotDark],
-    [0, 4, carrotMid],
-    [0, 5, carrotDark],
-    [0, 6, carrotDark]
-  ];
-
-  for (const [gridX, gridY, color] of pixels) {
-    offset = writeRectWH(
-      vertexData,
-      offset,
-      centerX + gridX * unit,
-      centerY + gridY * unit,
-      unit,
-      unit,
-      color,
-      offsetX,
-      offsetY
-    );
-  }
-
-  return offset;
+  return renderDrawCarrot(vertexData, offset, centerX, centerY, size, offsetX, offsetY);
 }
+
 
 function getRabbitAnimationSample(textureWidth) {
-  const directionKey = state.player.facing < 0 ? 'left' : 'right';
-  const animation = RABBIT_ANIMATIONS[state.player.animationState] ?? RABBIT_ANIMATIONS.idle;
-  const frames = animation[directionKey] ?? animation.right;
-  const frameListLength = frames.length || 1;
-  const frameListIndex = Math.floor(state.player.animationTime * animation.fps) % frameListLength;
-  const frameColumn = frames[frameListIndex] ?? 0;
-  const boundedColumn = clamp(frameColumn, 0, RABBIT_FRAME_COLUMNS - 1);
-  const frameX = RABBIT_FRAME_X[boundedColumn];
-  const nextFrameX = RABBIT_FRAME_X[boundedColumn + 1];
-  const frameWidth = nextFrameX ? (nextFrameX - frameX) : (textureWidth - frameX);
-  const frameY = state.player.facing < 0 ? RABBIT_FRAME_HEIGHT : 0;
-  return {
-    directionKey,
-    frameListIndex,
-    frameColumn: boundedColumn,
-    frameRect: {
-      frameX,
-      frameY,
-      frameWidth: Math.max(1, frameWidth || RABBIT_FRAME_WIDTH),
-      frameHeight: RABBIT_FRAME_HEIGHT
-    }
-  };
+  return renderGetRabbitAnimationSample(state, textureWidth);
 }
 
-function writeSprite(vertexData, centerX, centerY, drawWidth, drawHeight, frameRect, textureWidth, textureHeight, offsetX = 0, offsetY = 0) {
-  const finalCenterX = centerX + offsetX;
-  const finalCenterY = centerY + offsetY;
-  const halfWidth = drawWidth / 2;
-  const halfHeight = drawHeight / 2;
-  const x1 = (finalCenterX - halfWidth) / GAME_WIDTH * 2 - 1;
-  const y1 = 1 - (finalCenterY - halfHeight) / GAME_HEIGHT * 2;
-  const x2 = (finalCenterX + halfWidth) / GAME_WIDTH * 2 - 1;
-  const y2 = 1 - (finalCenterY + halfHeight) / GAME_HEIGHT * 2;
-
-  const u1 = frameRect.frameX / textureWidth;
-  const v1 = frameRect.frameY / textureHeight;
-  const u2 = (frameRect.frameX + frameRect.frameWidth) / textureWidth;
-  const v2 = (frameRect.frameY + frameRect.frameHeight) / textureHeight;
-
-  vertexData.set([
-    x1, y1, u1, v1,
-    x2, y1, u2, v1,
-    x2, y2, u2, v2,
-    x1, y1, u1, v1,
-    x2, y2, u2, v2,
-    x1, y2, u1, v2
-  ]);
-}
 
 function render(timestamp) {
   if (!gpu) {
@@ -3507,9 +1496,9 @@ function render(timestamp) {
 async function start() {
   setupInput();
   loadHighScore();
-  loadSettings();
-  loadSessionJournal();
-  renderSessionJournal();
+  uiSystem.loadSettings();
+  uiSystem.loadSessionJournal();
+  uiSystem.renderSessionJournal();
   updateHud();
   fitStageToViewport();
 
