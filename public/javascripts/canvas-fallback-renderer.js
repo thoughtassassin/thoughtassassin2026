@@ -73,19 +73,78 @@ export async function createCanvasFallbackRenderer({ canvas }) {
     context.lineTo(980 + offsetX, horizonY + 8 + offsetY);
     context.closePath();
     context.fill();
+
+    context.fillStyle = 'rgba(255, 199, 119, 0.22)';
+    context.fillRect(offsetX, horizonY - 18 + offsetY, GAME_WIDTH, 22);
+
+    const cloudDrift = Math.sin(timeSeconds * 0.18) * 22;
+    drawCloudBank(180 + cloudDrift + offsetX, 88 + offsetY, 92, 26);
+    drawCloudBank(420 - cloudDrift * 0.6 + offsetX, 64 + offsetY, 118, 30);
+    drawCloudBank(760 + cloudDrift * 0.8 + offsetX, 98 + offsetY, 104, 26);
+
+    drawGroundTexture(horizonY + offsetY, offsetX, offsetY, timeSeconds);
+  };
+
+  const drawCloudBank = (x, y, width, height) => {
+    context.fillStyle = 'rgba(214, 171, 153, 0.55)';
+    context.beginPath();
+    context.ellipse(x - width * 0.2, y + 2, width * 0.26, height * 0.42, 0, 0, Math.PI * 2);
+    context.ellipse(x, y, width * 0.32, height * 0.5, 0, 0, Math.PI * 2);
+    context.ellipse(x + width * 0.24, y + 4, width * 0.28, height * 0.4, 0, 0, Math.PI * 2);
+    context.fill();
+
+    context.fillStyle = 'rgba(245, 206, 172, 0.34)';
+    context.beginPath();
+    context.ellipse(x, y - 4, width * 0.24, height * 0.26, 0, 0, Math.PI * 2);
+    context.fill();
+  };
+
+  const drawGroundTexture = (horizonY, offsetX, offsetY, timeSeconds) => {
+    context.strokeStyle = 'rgba(111, 142, 70, 0.24)';
+    context.lineWidth = 1;
+    for (let i = 0; i < 22; i += 1) {
+      const y = horizonY + 8 + i * 9;
+      const wobble = Math.sin(timeSeconds * 0.4 + i * 0.38) * 6;
+      context.beginPath();
+      context.moveTo(offsetX + wobble, y);
+      context.quadraticCurveTo(offsetX + GAME_WIDTH * 0.45, y + 4, offsetX + GAME_WIDTH + wobble * 0.6, y - 2);
+      context.stroke();
+    }
+
+    context.fillStyle = 'rgba(82, 112, 50, 0.5)';
+    for (let x = 18; x < GAME_WIDTH; x += 28) {
+      const bladeHeight = 10 + ((x / 7) % 9);
+      context.beginPath();
+      context.moveTo(x + offsetX, GAME_HEIGHT + offsetY - 2);
+      context.lineTo(x - 3 + offsetX, GAME_HEIGHT + offsetY - bladeHeight);
+      context.lineTo(x + 2 + offsetX, GAME_HEIGHT + offsetY - bladeHeight * 0.55);
+      context.closePath();
+      context.fill();
+    }
   };
 
   const drawCarrot = (x, y, size, offsetX, offsetY) => {
     const centerX = x + offsetX;
     const centerY = y + offsetY;
 
-    context.fillStyle = '#f7941d';
+    const bodyGradient = context.createLinearGradient(centerX, centerY - size, centerX, centerY + size * 1.2);
+    bodyGradient.addColorStop(0, '#ffb247');
+    bodyGradient.addColorStop(0.58, '#f88d28');
+    bodyGradient.addColorStop(1, '#d86716');
+    context.fillStyle = bodyGradient;
     context.beginPath();
     context.moveTo(centerX, centerY + size * 1.1);
     context.lineTo(centerX - size * 0.52, centerY - size * 0.56);
     context.lineTo(centerX + size * 0.52, centerY - size * 0.56);
     context.closePath();
     context.fill();
+
+    context.strokeStyle = 'rgba(255, 208, 132, 0.7)';
+    context.lineWidth = 1.5;
+    context.beginPath();
+    context.moveTo(centerX - size * 0.05, centerY - size * 0.44);
+    context.lineTo(centerX - size * 0.12, centerY + size * 0.72);
+    context.stroke();
 
     context.fillStyle = '#90c94c';
     context.fillRect(centerX - 2, centerY - size * 0.95, 4, size * 0.4);
@@ -101,7 +160,18 @@ export async function createCanvasFallbackRenderer({ canvas }) {
     context.translate(x, y);
     context.rotate(hazard.isFalling ? (hazard.fallSpin || 0) : 0);
 
-    context.fillStyle = '#4d4d57';
+    const shellGradient = context.createRadialGradient(
+      -hazard.size * 0.2,
+      -hazard.size * 0.3,
+      hazard.size * 0.2,
+      0,
+      0,
+      hazard.size * 1.1
+    );
+    shellGradient.addColorStop(0, '#7b7589');
+    shellGradient.addColorStop(0.58, '#585464');
+    shellGradient.addColorStop(1, '#363543');
+    context.fillStyle = shellGradient;
     context.beginPath();
     context.arc(0, 0, hazard.size, 0, Math.PI * 2);
     context.fill();
@@ -144,6 +214,12 @@ export async function createCanvasFallbackRenderer({ canvas }) {
       context.arc(-hazard.size * 0.27, -hazard.size * 0.08, hazard.size * 0.07, 0, Math.PI * 2);
       context.arc(hazard.size * 0.27, -hazard.size * 0.08, hazard.size * 0.07, 0, Math.PI * 2);
       context.fill();
+
+      context.strokeStyle = '#de8f6e';
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(0, hazard.size * 0.2, hazard.size * 0.22, 0.2 * Math.PI, 0.8 * Math.PI);
+      context.stroke();
     }
 
     context.restore();
@@ -171,39 +247,110 @@ export async function createCanvasFallbackRenderer({ canvas }) {
 
     const player = state.player;
 
+    let spriteDrawn = false;
     if (rabbitImage) {
-      const animationSample = getRabbitAnimationSample(rabbitImage.width);
-      const frameRect = animationSample.frameRect;
-      const drawX = player.x + offsetX;
-      const drawY = player.y + offsetY;
+      try {
+        const animationSample = getRabbitAnimationSample(rabbitImage.width);
+        const frameRect = animationSample.frameRect;
+        const sourceIsValid =
+          Number.isFinite(frameRect.x) &&
+          Number.isFinite(frameRect.y) &&
+          Number.isFinite(frameRect.width) &&
+          Number.isFinite(frameRect.height) &&
+          frameRect.width > 0 &&
+          frameRect.height > 0 &&
+          frameRect.x >= 0 &&
+          frameRect.y >= 0 &&
+          (frameRect.x + frameRect.width) <= rabbitImage.width &&
+          (frameRect.y + frameRect.height) <= rabbitImage.height;
 
-      context.save();
-      context.translate(drawX, drawY);
+        if (sourceIsValid) {
+          const drawX = player.x + offsetX;
+          const drawY = player.y + offsetY;
 
-      if (player.facing < 0) {
-        context.scale(-1, 1);
+          context.save();
+          context.translate(drawX, drawY);
+
+          if (player.facing < 0) {
+            context.scale(-1, 1);
+          }
+
+          context.drawImage(
+            rabbitImage,
+            frameRect.x,
+            frameRect.y,
+            frameRect.width,
+            frameRect.height,
+            -player.drawWidth / 2,
+            -player.drawHeight / 2,
+            player.drawWidth,
+            player.drawHeight
+          );
+
+          context.restore();
+          spriteDrawn = true;
+        }
+      } catch {
+        spriteDrawn = false;
       }
+    }
 
-      context.drawImage(
-        rabbitImage,
-        frameRect.x,
-        frameRect.y,
-        frameRect.width,
-        frameRect.height,
-        -player.drawWidth / 2,
-        -player.drawHeight / 2,
-        player.drawWidth,
-        player.drawHeight
-      );
-
-      context.restore();
+    if (!spriteDrawn) {
+      drawProceduralRabbit(player, offsetX, offsetY);
       return;
     }
 
-    context.fillStyle = '#f5f2ea';
+    context.strokeStyle = 'rgba(255, 248, 226, 0.45)';
+    context.lineWidth = 1;
     context.beginPath();
-    context.ellipse(player.x + offsetX, player.y + offsetY, player.drawWidth * 0.34, player.drawHeight * 0.46, 0, 0, Math.PI * 2);
+    context.ellipse(player.x + offsetX, player.y + offsetY, player.drawWidth * 0.33, player.drawHeight * 0.43, 0, 0, Math.PI * 2);
+    context.stroke();
+  };
+
+  const drawProceduralRabbit = (player, offsetX, offsetY) => {
+    const x = player.x + offsetX;
+    const y = player.y + offsetY;
+    const facing = player.facing < 0 ? -1 : 1;
+
+    context.save();
+    context.translate(x, y);
+    if (facing < 0) {
+      context.scale(-1, 1);
+    }
+
+    context.fillStyle = '#cfc8bf';
+    context.beginPath();
+    context.ellipse(0, 4, player.drawWidth * 0.34, player.drawHeight * 0.38, 0, 0, Math.PI * 2);
     context.fill();
+
+    context.fillStyle = '#e6ddd1';
+    context.beginPath();
+    context.ellipse(player.drawWidth * 0.16, -player.drawHeight * 0.06, player.drawWidth * 0.2, player.drawHeight * 0.22, 0, 0, Math.PI * 2);
+    context.fill();
+
+    context.fillStyle = '#ddd3c7';
+    context.beginPath();
+    context.ellipse(player.drawWidth * 0.12, -player.drawHeight * 0.36, player.drawWidth * 0.07, player.drawHeight * 0.2, 0.05, 0, Math.PI * 2);
+    context.ellipse(player.drawWidth * 0.22, -player.drawHeight * 0.34, player.drawWidth * 0.06, player.drawHeight * 0.18, -0.03, 0, Math.PI * 2);
+    context.fill();
+
+    context.fillStyle = '#ffc1ba';
+    context.beginPath();
+    context.ellipse(player.drawWidth * 0.12, -player.drawHeight * 0.36, player.drawWidth * 0.03, player.drawHeight * 0.14, 0.05, 0, Math.PI * 2);
+    context.ellipse(player.drawWidth * 0.22, -player.drawHeight * 0.34, player.drawWidth * 0.028, player.drawHeight * 0.13, -0.03, 0, Math.PI * 2);
+    context.fill();
+
+    context.fillStyle = '#16151b';
+    context.beginPath();
+    context.arc(player.drawWidth * 0.2, -player.drawHeight * 0.08, 2.2, 0, Math.PI * 2);
+    context.fill();
+
+    context.fillStyle = '#f09b8e';
+    context.beginPath();
+    context.arc(player.drawWidth * 0.28, -player.drawHeight * 0.02, 2.4, 0, Math.PI * 2);
+    context.fill();
+
+    context.restore();
   };
 
   const drawCollectEffect = (effect, offsetX, offsetY) => {
@@ -216,6 +363,14 @@ export async function createCanvasFallbackRenderer({ canvas }) {
     context.beginPath();
     context.arc(effect.x + offsetX, effect.y + offsetY, radius, 0, Math.PI * 2);
     context.stroke();
+
+    context.fillStyle = 'rgba(255, 238, 151, 0.7)';
+    for (let i = 0; i < 6; i += 1) {
+      const angle = (Math.PI * 2 * i) / 6;
+      const px = effect.x + offsetX + Math.cos(angle) * (radius * 0.5);
+      const py = effect.y + offsetY + Math.sin(angle) * (radius * 0.5);
+      context.fillRect(px - 1, py - 1, 2, 2);
+    }
   };
 
   const drawEnemyKillEffect = (effect, offsetX, offsetY) => {

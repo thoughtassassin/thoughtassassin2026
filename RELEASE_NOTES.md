@@ -1,3 +1,13 @@
+# Thought Assassin — Release v0.3.4
+
+## Highlights
+- Fixed Canvas compatibility rabbit visibility by validating sprite-frame bounds and falling back to a procedural rabbit when sprite sampling is invalid.
+- Improved Canvas fallback visual quality with richer cloud layering, horizon glow, textured ground passes, and upgraded carrot/wolf shading.
+- Enhanced fallback effect readability with improved collect sparkles and stronger character silhouette separation.
+
+## Stability
+- Version metadata updated to `0.3.4` and release tagged as `v0.3.4`.
+
 # Thought Assassin — Release v0.3.3
 
 ## Highlights
