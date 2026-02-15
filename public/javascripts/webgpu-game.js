@@ -669,6 +669,14 @@ function setupInput() {
     return null;
   };
 
+  const setDirectionalKeyDown = (key) => {
+    if (key === 'ArrowUp') state.keys.delete('ArrowDown');
+    if (key === 'ArrowDown') state.keys.delete('ArrowUp');
+    if (key === 'ArrowLeft') state.keys.delete('ArrowRight');
+    if (key === 'ArrowRight') state.keys.delete('ArrowLeft');
+    state.keys.add(key);
+  };
+
   window.addEventListener('keydown', (event) => {
     unlockAudioFromGesture();
 
@@ -712,7 +720,7 @@ function setupInput() {
     }
 
     if (controlKey && controlKey !== 'Space') {
-      state.keys.add(controlKey);
+      setDirectionalKeyDown(controlKey);
     }
   });
 
@@ -1493,6 +1501,23 @@ function render(timestamp) {
   requestAnimationFrame(render);
 }
 
+function showGraphicsUnsupportedState(error) {
+  console.error(error);
+
+  const unsupportedMessage = [
+    'This browser does not support WebGPU yet.',
+    '',
+    'Try Chrome or Edge on desktop with WebGPU enabled.'
+  ].join('\n');
+
+  showOverlay('Graphics Backend Unsupported', unsupportedMessage, 'Unavailable');
+  if (overlayButtonEl) {
+    overlayButtonEl.style.display = 'none';
+  }
+
+  setStatus('WebGPU unavailable in this browser.');
+}
+
 async function start() {
   setupInput();
   loadHighScore();
@@ -1517,8 +1542,7 @@ async function start() {
     showStoryIntro();
     requestAnimationFrame(render);
   } catch (error) {
-    console.error(error);
-    setStatus('WebGPU unavailable. Use a WebGPU-enabled browser (Chrome/Edge).');
+    showGraphicsUnsupportedState(error);
   }
 }
 
