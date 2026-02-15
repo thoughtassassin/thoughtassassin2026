@@ -548,8 +548,12 @@ body {
 
   .hud h1,
   .settings-bar,
-  .touch-controls,
   .fallback-mode-badge {
+    display: none !important;
+  }
+
+  .status,
+  .directions-overlay {
     display: none !important;
   }
 
@@ -563,7 +567,7 @@ body {
   }
 
   .touch-controls {
-    display: none;
+    display: flex;
     align-items: flex-end;
   }
 
