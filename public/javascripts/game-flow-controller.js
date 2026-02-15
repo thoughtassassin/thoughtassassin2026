@@ -82,6 +82,66 @@ export function createGameFlowController({
   let winAffirmationRevealTimer = null;
   let contemplativePulseTimer = null;
 
+  function clearOverlayReservations() {
+    if (overlayTitleEl) {
+      overlayTitleEl.style.minHeight = '';
+    }
+    if (overlayMessageEl) {
+      overlayMessageEl.style.minHeight = '';
+    }
+  }
+
+  function reserveOverlayTextHeight(element, fullText) {
+    if (!element) {
+      return;
+    }
+
+    const previousText = element.textContent;
+    const previousVisibility = element.style.visibility;
+    const previousOpacity = element.style.opacity;
+
+    element.style.visibility = 'hidden';
+    element.style.opacity = '1';
+    element.textContent = fullText;
+    element.style.minHeight = `${Math.ceil(element.scrollHeight)}px`;
+
+    element.textContent = previousText;
+    element.style.visibility = previousVisibility;
+    element.style.opacity = previousOpacity;
+  }
+
+  function reserveOverlayButtonSpace(label) {
+    if (!overlayButtonEl) {
+      return;
+    }
+
+    overlayButtonEl.textContent = label;
+    overlayButtonEl.style.display = 'inline-block';
+    overlayButtonEl.style.visibility = 'hidden';
+    overlayButtonEl.style.pointerEvents = 'none';
+  }
+
+  function showOverlayButton(label) {
+    if (!overlayButtonEl) {
+      return;
+    }
+
+    overlayButtonEl.textContent = label;
+    overlayButtonEl.style.display = 'inline-block';
+    overlayButtonEl.style.visibility = 'visible';
+    overlayButtonEl.style.pointerEvents = 'auto';
+  }
+
+  function hideOverlayButton() {
+    if (!overlayButtonEl) {
+      return;
+    }
+
+    overlayButtonEl.style.display = 'none';
+    overlayButtonEl.style.visibility = '';
+    overlayButtonEl.style.pointerEvents = '';
+  }
+
   function clearStoryTypewriter() {
     if (storyTypeTimer !== null) {
       window.cancelAnimationFrame(storyTypeTimer);
@@ -234,10 +294,7 @@ export function createGameFlowController({
     if (overlayMessageEl) {
       overlayMessageEl.textContent = `${storyFullText}\n\n> press enter to continue`;
     }
-    if (overlayButtonEl) {
-      overlayButtonEl.textContent = 'Continue';
-      overlayButtonEl.style.display = 'inline-block';
-    }
+    showOverlayButton('Continue');
   }
 
   function advanceStoryIntro() {
@@ -273,13 +330,14 @@ export function createGameFlowController({
       gameOverlayEl.scrollTop = 0;
     }
     if (overlayButtonEl) {
-      overlayButtonEl.style.display = 'none';
+      reserveOverlayButtonSpace('Continue');
     }
 
     storyFullText = STORY_INTRO_LINES.join('\n');
     storyTypedChars = 0;
     if (overlayMessageEl) {
       overlayMessageEl.textContent = '';
+      reserveOverlayTextHeight(overlayMessageEl, `${storyFullText}\n\n> press enter to continue`);
     }
 
     clearStoryTypewriter();
@@ -328,13 +386,12 @@ export function createGameFlowController({
     clearRespawnCountdown();
     clearStoryTypewriter();
     clearTitleCountdown();
+    clearOverlayReservations();
     setGamePhase('title');
     state.running = false;
     state.paused = false;
     setSoundtrackActive(false);
-    if (overlayButtonEl) {
-      overlayButtonEl.style.display = 'none';
-    }
+    hideOverlayButton();
     showOverlay('Thought Assassin', '', 'Start Game');
     beginTitleCountdown();
     setStatus('Get ready...');
@@ -395,6 +452,8 @@ export function createGameFlowController({
       overlayTitleEl.style.opacity = '0';
       overlayMessageEl.textContent = '';
       overlayMessageEl.style.opacity = '1';
+      reserveOverlayTextHeight(overlayMessageEl, `${winChapterTag}\n${affirmation}`);
+      reserveOverlayButtonSpace('Play Again');
 
       const showWinAffirmationComplete = () => {
         setContemplativeTypeCursorActive(false);
@@ -441,7 +500,7 @@ export function createGameFlowController({
               }
 
               setGamePhase('win');
-              overlayButtonEl.style.display = 'inline-block';
+                showOverlayButton('Play Again');
               clearWinAffirmationSequence();
             }, profile.respawnReflectionFadeDurationMs + 40);
           }, profile.respawnReflectionFadeDurationMs + 40);
@@ -507,10 +566,11 @@ export function createGameFlowController({
       return;
     }
 
-    overlayButtonEl.style.display = 'none';
+    reserveOverlayButtonSpace('Play Again');
     overlayTitleEl.style.opacity = '0';
     overlayMessageEl.textContent = '';
     overlayMessageEl.style.opacity = '1';
+    reserveOverlayTextHeight(overlayMessageEl, `${chapterTag}\n${koan}`);
 
     const showGameOverKoanComplete = () => {
       setContemplativeTypeCursorActive(false);
@@ -633,7 +693,7 @@ export function createGameFlowController({
     const reflection = getRespawnReflection();
     const profile = getContemplativePolishProfile();
     if (overlayButtonEl) {
-      overlayButtonEl.style.display = 'none';
+      hideOverlayButton();
     }
     if (!overlayTitleEl || !overlayMessageEl) {
       setGamePhase('respawn');
@@ -666,10 +726,12 @@ export function createGameFlowController({
     if (overlayTitleEl) {
       overlayTitleEl.textContent = 'Breathe. Return.';
       overlayTitleEl.style.opacity = '0';
+      reserveOverlayTextHeight(overlayTitleEl, 'Breathe. Return.');
     }
     if (overlayMessageEl) {
       overlayMessageEl.textContent = '';
       overlayMessageEl.style.opacity = '1';
+      reserveOverlayTextHeight(overlayMessageEl, reflection);
     }
 
     const showRespawnReflectionComplete = () => {
