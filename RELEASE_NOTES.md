@@ -1,3 +1,24 @@
+# Thought Assassin — Release v0.3.0
+
+## Highlights
+- Added full rabbit elimination sequence (spiral shrink, poof, angel rise) on every life loss.
+- Added post-death reflective respawn flow with existential quote, gameplay pause, and `3-2-1` return countdown.
+- Added final-loss Zen koan presentation with chapter tags, typewriter reveal, hold, fade, then game-over handoff.
+- Added pre-win affirmation sequence with rotating Dawn Note chapter tags before final win message.
+
+## Audio & Atmosphere
+- Added contemplative drone layer and profile-driven pacing (`balanced`, `serene`, `dramatic`) for reflective transitions.
+- Added final message theme and tuned timing so dramatic motif begins with the koan phase.
+- Added contemplative cursor, vignette darkening, and pulse effects during reflective overlays.
+
+## Journal & Continuity
+- Added session-scoped journal panel to capture win/fall reflections with chapter, quote/affirmation, and score.
+- Added clear-journal control and no-immediate-repeat rotation for koans, respawn reflections, and chapter tags.
+
+## Stability
+- Fixed transition edge case where final game-over details could fail to reveal after koan flow.
+- Added defensive reveal fallback logic around staged lose transition callbacks.
+
 # Thought Assassin — Release v0.2.0
 
 ## Highlights
