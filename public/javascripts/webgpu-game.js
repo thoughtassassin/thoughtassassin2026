@@ -96,8 +96,10 @@ import { state } from './game-state.js';
 let gpu = null;
 let canvasFallbackRenderer = null;
 let fallbackModeBadgeEl = null;
+let fallbackLastRenderTimestamp = 0;
 const FALLBACK_STORY_TYPE_INTERVAL_MS = STORY_TYPE_INTERVAL_MS;
 const FALLBACK_TYPEWRITER_SPEED_MULTIPLIER = 0.45;
+const FALLBACK_IDLE_RENDER_INTERVAL_MS = 240;
 const contemplativeQuotePools = {
   respawn: [],
   gameOver: [],
@@ -1366,14 +1368,21 @@ function render(timestamp) {
   const shakeY = shakeMagnitude > 0 ? randomRange(-shakeMagnitude, shakeMagnitude) : 0;
 
   if (canvasFallbackRenderer) {
-    canvasFallbackRenderer.drawFrame({
-      state,
-      timeSeconds: timestamp * 0.001,
-      shakeX,
-      shakeY,
-      getShotLength,
-      getRabbitAnimationSample
-    });
+    const shouldThrottleFallbackFrame = !state.running;
+    const shouldRenderFallbackFrame = !shouldThrottleFallbackFrame
+      || (timestamp - fallbackLastRenderTimestamp) >= FALLBACK_IDLE_RENDER_INTERVAL_MS;
+
+    if (shouldRenderFallbackFrame) {
+      canvasFallbackRenderer.drawFrame({
+        state,
+        timeSeconds: timestamp * 0.001,
+        shakeX,
+        shakeY,
+        getShotLength,
+        getRabbitAnimationSample
+      });
+      fallbackLastRenderTimestamp = timestamp;
+    }
 
     requestAnimationFrame(render);
     return;
