@@ -1,0 +1,345 @@
+@font-face {
+  font-family: 'Joystix';
+  src: url('/fonts/joystix_monospace-webfont.eot');
+  src: url('/fonts/joystix_monospace-webfont.eot?#iefix') format('embedded-opentype'),
+    url('/fonts/joystix_monospace-webfont.woff') format('woff'),
+    url('/fonts/joystix_monospace-webfont.ttf') format('truetype'),
+    url('/fonts/joystix_monospace-webfont.svg#JoystixMonospace') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #0a1020;
+  color: #e9eefc;
+  font-family: 'Joystix', Arial, Helvetica, sans-serif;
+}
+
+.game-page {
+  width: min(98vw, 1800px);
+  margin: 0 auto;
+  padding: clamp(8px, 1.8vw, 18px);
+}
+
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.hud h1 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-weight: 700;
+  font-size: clamp(0.78rem, 1.3vw, 1rem);
+}
+
+.stats p {
+  margin: 0;
+}
+
+.settings-bar {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.setting-btn {
+  border: 1px solid rgba(118, 146, 255, 0.8);
+  background: rgba(25, 40, 100, 0.6);
+  color: #eef3ff;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.62rem;
+  cursor: pointer;
+}
+
+.setting-btn:hover {
+  background: rgba(52, 76, 180, 0.78);
+}
+
+.setting-btn.off {
+  border-color: rgba(150, 110, 130, 0.8);
+  background: rgba(74, 39, 49, 0.75);
+  color: #e5c7d2;
+}
+
+.stage-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  border: 2px solid #3d5cff;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #090d1a;
+}
+
+.top-ui {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 4;
+}
+
+.top-overlay {
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: rgba(7, 11, 24, 0.56);
+  backdrop-filter: blur(2px);
+}
+
+#gameCanvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.fx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.status {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 0.9rem;
+}
+
+.game-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  background: rgba(8, 12, 28, 0.74);
+  color: #e9eefc;
+  text-align: center;
+  padding: 20px;
+  z-index: 7;
+}
+
+.game-overlay.hidden {
+  display: none;
+}
+
+.game-overlay h2 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.game-overlay p {
+  margin: 0;
+  font-size: 1rem;
+  color: #c8d7ff;
+}
+
+.game-overlay button {
+  border: 1px solid #7390ff;
+  background: #2f4ec9;
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.game-overlay button:hover {
+  background: #4064ee;
+}
+
+.collect-popup {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-weight: 900;
+  font-size: 1.25rem;
+  color: #fff5a8;
+  text-shadow: 0 0 8px #ff9f1a, 0 0 2px #000;
+  opacity: 0;
+  animation: collect-pop 700ms ease-out forwards;
+  white-space: nowrap;
+}
+
+.collect-popup.enemy-popup {
+  color: #ffd0a3;
+  text-shadow: 0 0 8px #ff5c1a, 0 0 2px #000;
+}
+
+@keyframes collect-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -60%) scale(1.25);
+  }
+  45% {
+    opacity: 1;
+    transform: translate(-50%, -92%) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -150%) scale(0.9);
+  }
+}
+
+.anim-debug {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 0.85rem;
+  color: #b5ffc9;
+}
+
+.instructions {
+  margin-top: 1px;
+  color: #9fb5ff;
+  font-size: clamp(0.56rem, 0.95vw, 0.82rem);
+}
+
+.directions-overlay {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  transform: none;
+  margin-top: 0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(4, 7, 16, 0.65);
+  z-index: 4;
+  text-align: right;
+  white-space: nowrap;
+  font-size: clamp(0.5rem, 0.85vw, 0.72rem);
+}
+
+.touch-controls {
+  display: none;
+  gap: 14px;
+  margin-top: 10px;
+  user-select: none;
+}
+
+.touch-pad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(44px, 1fr));
+  grid-template-areas:
+    '. up .'
+    'left down right';
+  gap: 8px;
+  width: min(46vw, 190px);
+}
+
+.touch-pad button[data-touch="ArrowUp"] { grid-area: up; }
+.touch-pad button[data-touch="ArrowLeft"] { grid-area: left; }
+.touch-pad button[data-touch="ArrowDown"] { grid-area: down; }
+.touch-pad button[data-touch="ArrowRight"] { grid-area: right; }
+
+.touch-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.touch-controls button {
+  border: 1px solid #6a86ff;
+  background: #213068;
+  color: #fff;
+  border-radius: 10px;
+  min-height: 44px;
+  min-width: 52px;
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  touch-action: manipulation;
+}
+
+.touch-controls button:active {
+  background: #3e59be;
+}
+
+@media (max-width: 900px) {
+  .top-ui {
+    top: 5px;
+    left: 6px;
+    right: 6px;
+  }
+
+  .top-overlay {
+    padding: 3px 5px;
+  }
+
+  .settings-bar {
+    margin-top: 3px;
+    gap: 6px;
+  }
+
+  .touch-controls {
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .setting-btn {
+    font-size: 0.58rem;
+    padding: 5px 7px;
+  }
+
+  .stats {
+    font-size: clamp(0.62rem, 2.6vw, 0.8rem);
+    gap: 6px 10px;
+  }
+
+  .instructions {
+    font-size: clamp(0.5rem, 2vw, 0.66rem);
+  }
+
+  .directions-overlay {
+    width: auto;
+    max-width: calc(100% - 20px);
+    white-space: normal;
+    line-height: 1.35;
+    bottom: 8px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .game-page {
+    width: min(94vw, 2200px);
+  }
+
+  .stats {
+    font-size: 1.08rem;
+  }
+}

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/webgpu-game.css" />
+    <title>Thought Assassin</title>
+  </head>
+
+  <body>
+    <main class="game-page">
+      <section class="stage-wrap">
+        <canvas id="gameCanvas" width="960" height="540" aria-label="Game board"></canvas>
+        <div class="top-ui">
+          <div class="top-overlay">
+            <header class="hud">
+              <h1>Thought Assassin — WebGPU Edition</h1>
+              <div class="stats">
+                <p>Score: <span id="score">0</span></p>
+                <p>Hi-Score: <span id="highScore">0</span></p>
+                <p>Lives: <span id="lives">3</span></p>
+                <p>Time: <span id="time">60</span>s</p>
+              </div>
+            </header>
+          </div>
+          <div class="settings-bar">
+            <button id="musicToggle" type="button" class="setting-btn">Music: ON (M)</button>
+            <button id="difficultyToggle" type="button" class="setting-btn">Difficulty: Normal</button>
+          </div>
+        </div>
+        <div id="status" class="status">Initializing WebGPU…</div>
+        <div class="instructions directions-overlay">
+          Move: Arrows • Jump: Space • Fire: F • Mute: M • Restart: R
+        </div>
+        <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
+        <div id="gameOverlay" class="game-overlay hidden" role="dialog" aria-live="polite">
+          <h2 id="overlayTitle">Thought Assassin</h2>
+          <p id="overlayMessage">Collect carrots and survive the wolves.</p>
+          <button id="overlayButton" type="button">Start Game</button>
+        </div>
+      </section>
+
+      <div id="touchControls" class="touch-controls" aria-label="Touch controls">
+        <div class="touch-pad">
+          <button type="button" data-touch="ArrowUp">▲</button>
+          <button type="button" data-touch="ArrowLeft">◀</button>
+          <button type="button" data-touch="ArrowDown">▼</button>
+          <button type="button" data-touch="ArrowRight">▶</button>
+        </div>
+        <div class="touch-actions">
+          <button type="button" data-action="jump">JUMP</button>
+          <button type="button" data-action="fire">FIRE</button>
+        </div>
+      </div>
+
+    </main>
+    <script type="module" src="javascripts/webgpu-game.js"></script>
+  </body>
+</html>
