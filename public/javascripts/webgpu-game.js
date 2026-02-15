@@ -9,6 +9,7 @@ const stageWrapEl = document.querySelector('.stage-wrap');
 const gamePageEl = document.querySelector('.game-page');
 const musicToggleEl = document.getElementById('musicToggle');
 const difficultyToggleEl = document.getElementById('difficultyToggle');
+const fullscreenToggleEl = document.getElementById('fullscreenToggle');
 const touchControlsEl = document.getElementById('touchControls');
 const gameOverlayEl = document.getElementById('gameOverlay');
 const overlayTitleEl = document.getElementById('overlayTitle');
@@ -58,6 +59,20 @@ const PLAYER_DRAW_HEIGHT_BASE = 142;
 const PLAYER_PERSPECTIVE_FAR_SCALE = 0.68;
 const PLAYER_WALK_MIN_Y = GROUND_SKY_SEAM_Y - PLAYER_DRAW_HEIGHT_BASE / 2;
 const PLAYER_WALK_MAX_Y = GAME_HEIGHT - PLAYER_DRAW_HEIGHT_BASE / 2;
+const STORY_TYPE_INTERVAL_MS = 22;
+const STORY_INTRO_LINES = [
+  '> sunrise over the prairie should have meant peace,',
+  '> but something old and hungry woke in the grass.',
+  '',
+  '> the thought-wolves are not flesh alone —',
+  '> they are panic, doubt, and the voices that say you should stop.',
+  '',
+  '> the carrots are memory cores, scattered when the system fractured.',
+  '> recover them before the fear-loop deepens and the field collapses.',
+  '',
+  '> you are RABBIT-01.',
+  '> keep moving. keep breathing. keep firing.'
+];
 const HIGH_SCORE_STORAGE_KEY = 'thoughtassassin.webgpu.highscore';
 const SETTINGS_STORAGE_KEY = 'thoughtassassin.webgpu.settings';
 const SOUNDTRACK_MELODY = [659, null, 784, 659, 988, 784, 659, 523, 587, null, 659, 587, 523, 440, 392, null];
@@ -150,6 +165,11 @@ const state = {
 };
 
 let gpu = null;
+let storyTypeTimer = null;
+let storyFullText = '';
+let storyTypedChars = 0;
+let titleCountdownTimer = null;
+let titleCountdownValue = 0;
 const audio = {
   context: null,
   soundtrackTimer: null,
@@ -212,6 +232,28 @@ function updateSettingsUI() {
     const profile = DIFFICULTY_PROFILES[state.settings.difficulty] ?? DIFFICULTY_PROFILES.normal;
     difficultyToggleEl.textContent = `Difficulty: ${profile.label}`;
   }
+
+  if (fullscreenToggleEl) {
+    const isFullscreen = Boolean(document.fullscreenElement);
+    fullscreenToggleEl.textContent = `Fullscreen: ${isFullscreen ? 'ON' : 'OFF'}`;
+  }
+}
+
+async function toggleFullscreen() {
+  try {
+    if (!document.fullscreenElement) {
+      if (stageWrapEl && stageWrapEl.requestFullscreen) {
+        await stageWrapEl.requestFullscreen();
+      }
+    } else if (document.exitFullscreen) {
+      await document.exitFullscreen();
+    }
+  } catch (error) {
+    console.warn('Fullscreen toggle failed:', error);
+  }
+
+  fitStageToViewport();
+  updateSettingsUI();
 }
 
 function saveSettings() {
@@ -284,6 +326,7 @@ function showOverlay(title, message, buttonLabel) {
   overlayTitleEl.textContent = title;
   overlayMessageEl.textContent = message;
   overlayButtonEl.textContent = buttonLabel;
+  gameOverlayEl.classList.remove('terminal-overlay');
   gameOverlayEl.classList.remove('hidden');
 }
 
@@ -295,16 +338,135 @@ function hideOverlay() {
   gameOverlayEl.classList.add('hidden');
 }
 
+function clearStoryTypewriter() {
+  if (storyTypeTimer !== null) {
+    window.clearInterval(storyTypeTimer);
+    storyTypeTimer = null;
+  }
+}
+
+function clearTitleCountdown() {
+  if (titleCountdownTimer !== null) {
+    window.clearInterval(titleCountdownTimer);
+    titleCountdownTimer = null;
+  }
+  titleCountdownValue = 0;
+}
+
+function updateTitleCountdownMessage() {
+  if (!overlayMessageEl || state.gamePhase !== 'title') {
+    return;
+  }
+
+  overlayMessageEl.textContent = `Collect carrots and avoid wolves. ${titleCountdownValue}`;
+}
+
+function beginTitleCountdown() {
+  clearTitleCountdown();
+  titleCountdownValue = 3;
+  updateTitleCountdownMessage();
+
+  titleCountdownTimer = window.setInterval(() => {
+    if (state.gamePhase !== 'title') {
+      clearTitleCountdown();
+      return;
+    }
+
+    titleCountdownValue -= 1;
+    if (titleCountdownValue <= 0) {
+      clearTitleCountdown();
+      resetGame();
+      return;
+    }
+
+    updateTitleCountdownMessage();
+  }, 1000);
+}
+
+function completeStoryTyping() {
+  clearStoryTypewriter();
+  storyTypedChars = storyFullText.length;
+  if (overlayMessageEl) {
+    overlayMessageEl.textContent = `${storyFullText}\n\n> press enter to continue`;
+  }
+  if (overlayButtonEl) {
+    overlayButtonEl.textContent = 'Continue';
+    overlayButtonEl.style.display = 'inline-block';
+  }
+}
+
+function advanceStoryIntro() {
+  if (state.gamePhase !== 'story') {
+    return;
+  }
+
+  if (storyTypedChars < storyFullText.length) {
+    completeStoryTyping();
+    return;
+  }
+
+  clearStoryTypewriter();
+  showTitleScreen();
+}
+
+function showStoryIntro() {
+  clearTitleCountdown();
+  state.gamePhase = 'story';
+  state.running = false;
+  state.paused = false;
+  setSoundtrackActive(false);
+
+  showOverlay('boot@thought-assassin:~$', '', 'Continue');
+  if (gameOverlayEl) {
+    gameOverlayEl.classList.add('terminal-overlay');
+  }
+  if (overlayButtonEl) {
+    overlayButtonEl.style.display = 'none';
+  }
+
+  storyFullText = STORY_INTRO_LINES.join('\n');
+  storyTypedChars = 0;
+  if (overlayMessageEl) {
+    overlayMessageEl.textContent = '';
+  }
+
+  clearStoryTypewriter();
+  storyTypeTimer = window.setInterval(() => {
+    if (state.gamePhase !== 'story') {
+      clearStoryTypewriter();
+      return;
+    }
+
+    storyTypedChars = Math.min(storyTypedChars + 1, storyFullText.length);
+    if (overlayMessageEl) {
+      overlayMessageEl.textContent = storyFullText.slice(0, storyTypedChars);
+    }
+
+    if (storyTypedChars >= storyFullText.length) {
+      completeStoryTyping();
+    }
+  }, STORY_TYPE_INTERVAL_MS);
+
+  setStatus('Initializing narrative feed...');
+}
+
 function showTitleScreen() {
+  clearStoryTypewriter();
+  clearTitleCountdown();
   state.gamePhase = 'title';
   state.running = false;
   state.paused = false;
   setSoundtrackActive(false);
-  showOverlay('Thought Assassin', 'Collect carrots and avoid wolves. Press Start to play.', 'Start Game');
-  setStatus('Press Start to begin.');
+  if (overlayButtonEl) {
+    overlayButtonEl.style.display = 'none';
+  }
+  showOverlay('Thought Assassin', '', 'Start Game');
+  beginTitleCountdown();
+  setStatus('Get ready...');
 }
 
 function finishGame(reason) {
+  clearTitleCountdown();
   state.running = false;
   state.paused = false;
   setSoundtrackActive(false);
@@ -315,6 +477,9 @@ function finishGame(reason) {
 
   state.gamePhase = reason === 'win' ? 'win' : 'lose';
   showOverlay(title, message, 'Play Again');
+  if (overlayButtonEl) {
+    overlayButtonEl.style.display = 'inline-block';
+  }
 }
 
 function getDifficultyMultiplier() {
@@ -695,6 +860,8 @@ function hitHazardByShot(hazard, shotDirection = 1) {
 }
 
 function resetGame() {
+  clearStoryTypewriter();
+  clearTitleCountdown();
   hideOverlay();
   state.gamePhase = 'playing';
   state.score = 0;
@@ -775,7 +942,12 @@ function setupInput() {
       return;
     }
 
-    if ((event.key === 'Enter' || event.code === 'Space') && !state.running && state.gamePhase !== 'playing') {
+    if ((event.key === 'Enter' || event.code === 'Space') && state.gamePhase === 'story') {
+      advanceStoryIntro();
+      return;
+    }
+
+    if ((event.key === 'Enter' || event.code === 'Space') && !state.running && state.gamePhase !== 'playing' && state.gamePhase !== 'title') {
       resetGame();
       return;
     }
@@ -796,6 +968,10 @@ function setupInput() {
   if (overlayButtonEl) {
     overlayButtonEl.addEventListener('click', () => {
       unlockAudioFromGesture();
+      if (state.gamePhase === 'story') {
+        advanceStoryIntro();
+        return;
+      }
       resetGame();
     });
   }
@@ -810,6 +986,12 @@ function setupInput() {
   if (difficultyToggleEl) {
     difficultyToggleEl.addEventListener('click', () => {
       cycleDifficulty();
+    });
+  }
+
+  if (fullscreenToggleEl) {
+    fullscreenToggleEl.addEventListener('click', () => {
+      toggleFullscreen();
     });
   }
 
@@ -2347,13 +2529,17 @@ async function start() {
 
   window.addEventListener('resize', fitStageToViewport);
   window.addEventListener('orientationchange', fitStageToViewport);
+  document.addEventListener('fullscreenchange', () => {
+    fitStageToViewport();
+    updateSettingsUI();
+  });
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', fitStageToViewport);
   }
 
   try {
     gpu = await initWebGPU();
-    showTitleScreen();
+    showStoryIntro();
     requestAnimationFrame(render);
   } catch (error) {
     console.error(error);

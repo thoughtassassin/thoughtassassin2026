@@ -1,3 +1,18 @@
+# Thought Assassin — Release v0.2.0
+
+## Highlights
+- Added terminal-style story intro with typewriter text and skip/continue behavior.
+- Replaced manual start flow with an automatic title countdown (`3-2-1`) into gameplay.
+- Added explicit `Play Again` visibility on game-over/win overlays for faster restart flow.
+- Added fullscreen toggle in the top settings bar with live ON/OFF state updates.
+
+## Visual/UX Polish
+- Refined sun glow/ray blending and removed inner dotted ring artifacts.
+- Kept post-intro title messaging minimal and focused.
+
+## Stability
+- Diagnostics checked clean after the latest UI and flow changes.
+
 # Thought Assassin — Release v0.1.0
 
 ## Highlights
