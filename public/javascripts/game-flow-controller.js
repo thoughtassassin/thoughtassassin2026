@@ -103,7 +103,7 @@ export function createGameFlowController({
     element.style.visibility = 'hidden';
     element.style.opacity = '1';
     element.textContent = fullText;
-    element.style.minHeight = `${Math.ceil(element.scrollHeight)}px`;
+    // element.style.minHeight = `${Math.ceil(element.scrollHeight)}px`;
 
     element.textContent = previousText;
     element.style.visibility = previousVisibility;
